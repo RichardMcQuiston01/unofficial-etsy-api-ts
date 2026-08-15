@@ -9,12 +9,12 @@ people (or four agents) working in parallel produce a consistent API.
 
 Resolved from the ROADMAP's open questions:
 
-| Question | Decision |
-|---|---|
+| Question        | Decision                                                                                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime support | Node.js 18+, browsers, and edge runtimes (Workers/Deno/Bun). No Node-only built-ins (`fs`, `http`, etc.) in the core package — platform `fetch` only, injectable for environments that don't provide it globally. |
-| Token storage | Ship the `TokenStore` interface plus a trivial `InMemoryTokenStore` default. No filesystem/DB-backed store in core — stays consumer-provided, per the framework-agnostic goal. |
-| Initial version | `0.1.0`. Breaking changes allowed between minors until `1.0.0`. |
-| Release scope | All four Stage 4 resource clusters ship together in `0.1.0` — no staggered release. |
+| Token storage   | Ship the `TokenStore` interface plus a trivial `InMemoryTokenStore` default. No filesystem/DB-backed store in core — stays consumer-provided, per the framework-agnostic goal.                                    |
+| Initial version | `0.1.0`. Breaking changes allowed between minors until `1.0.0`.                                                                                                                                                   |
+| Release scope   | All four Stage 4 resource clusters ship together in `0.1.0` — no staggered release.                                                                                                                               |
 
 Consequence for Stage 1 (scaffolding): no `fs`/`node:*` imports outside of
 optional, separately-exported entry points (if any are ever added later —
@@ -77,11 +77,18 @@ interface RetryConfig {
 
 ```ts
 type EtsyScope =
-  | "address_r" | "address_w" | "email_r"
-  | "listings_d" | "listings_r" | "listings_w"
-  | "profile_r" | "profile_w"
-  | "shops_r" | "shops_w"
-  | "transactions_r" | "transactions_w";
+  | "address_r"
+  | "address_w"
+  | "email_r"
+  | "listings_d"
+  | "listings_r"
+  | "listings_w"
+  | "profile_r"
+  | "profile_w"
+  | "shops_r"
+  | "shops_w"
+  | "transactions_r"
+  | "transactions_w";
 
 interface TokenSet {
   accessToken: string;
@@ -162,8 +169,8 @@ never completed."
 ```ts
 type RequestBody =
   | { kind: "json"; data: unknown }
-  | { kind: "form"; data: Record<string, unknown> }       // x-www-form-urlencoded
-  | { kind: "multipart"; data: Record<string, unknown> };  // file/image/video upload
+  | { kind: "form"; data: Record<string, unknown> } // x-www-form-urlencoded
+  | { kind: "multipart"; data: Record<string, unknown> }; // file/image/video upload
 
 interface RequestOptions {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -216,7 +223,7 @@ interface PaginatedResult<T> {
  *  advancing offset by the page size until a short page is returned. */
 declare function paginate<T>(
   fetchPage: (params: PaginationParams) => Promise<PaginatedResult<T>>,
-  start?: PaginationParams
+  start?: PaginationParams,
 ): AsyncIterable<T>;
 ```
 
@@ -249,10 +256,10 @@ directly as method parameter/return types.
 interface EtsyClient {
   readonly http: EtsyHttpClient;
   readonly auth?: EtsyOAuth;
-  listings: ListingsResource;   // Cluster 1
-  catalog: CatalogResource;     // Cluster 2
-  shop: ShopResource;           // Cluster 3
-  commerce: CommerceResource;   // Cluster 4
+  listings: ListingsResource; // Cluster 1
+  catalog: CatalogResource; // Cluster 2
+  shop: ShopResource; // Cluster 3
+  commerce: CommerceResource; // Cluster 4
 }
 
 declare function createEtsyClient(config: EtsyClientConfig): EtsyClient;

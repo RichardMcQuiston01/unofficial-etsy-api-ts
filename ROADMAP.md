@@ -13,32 +13,34 @@ Status: **planning draft for review**. Nothing below has been executed yet.
 The repo already vendors Etsy's OpenAPI 3.0 description (`docs/3.0.0.json`,
 v3.0.0). Facts pulled directly from it, used to size the work:
 
-| Fact | Value |
-|---|---|
-| Base URL | `https://openapi.etsy.com` |
-| Paths / Operations | 76 paths, **105 operations** (63 GET, 16 POST, 13 DELETE, 12 PUT, 1 PATCH) |
+| Fact                    | Value                                                                                                                                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base URL                | `https://openapi.etsy.com`                                                                                                                                                               |
+| Paths / Operations      | 76 paths, **105 operations** (63 GET, 16 POST, 13 DELETE, 12 PUT, 1 PATCH)                                                                                                               |
 | Tags (resource domains) | 27 (`ShopListing` 17 ops, `Shop ShippingProfile` 14, `Shop Receipt Transactions` 4, `Payment`, `Ledger Entry`, `User`, `UserAddress`, `SellerTaxonomy`, `BuyerTaxonomy`, `Review`, etc.) |
-| Schemas to model | 81 (`ShopListing`, `ShopReceipt`, `ListingInventory`, `Payment`, `ErrorSchema`, …) |
-| Deprecated operations | 0 |
-| Request body encodings | `application/x-www-form-urlencoded` (22 ops), `multipart/form-data` (3 ops: listing file/image/video upload), `application/json` (e.g. `updateListingInventory`) |
-| Response codes seen | 200, 201, 204, 400, 401, 403, 404, 409, 422, 500, 501, 503 |
-| Error body shape | `{ "error": string }` (`ErrorSchema`, required `error`) |
+| Schemas to model        | 81 (`ShopListing`, `ShopReceipt`, `ListingInventory`, `Payment`, `ErrorSchema`, …)                                                                                                       |
+| Deprecated operations   | 0                                                                                                                                                                                        |
+| Request body encodings  | `application/x-www-form-urlencoded` (22 ops), `multipart/form-data` (3 ops: listing file/image/video upload), `application/json` (e.g. `updateListingInventory`)                         |
+| Response codes seen     | 200, 201, 204, 400, 401, 403, 404, 409, 422, 500, 501, 503                                                                                                                               |
+| Error body shape        | `{ "error": string }` (`ErrorSchema`, required `error`)                                                                                                                                  |
 
 **Auth** (from `components.securitySchemes` + per-operation `security`):
+
 - Every request needs `x-api-key: <keystring>` (global `security: [{api_key: []}]`).
 - 73 of 105 operations additionally require **OAuth 2.0** (authorization-code +
-  PKCE). Etsy's keystring *is* the OAuth `client_id`.
+  PKCE). Etsy's keystring _is_ the OAuth `client_id`.
 - Authorization URL: `https://www.etsy.com/oauth/connect`; token URL:
   `https://openapi.etsy.com/v3/public/oauth/token`.
 - Scopes in use: `address_r`, `address_w`, `email_r`, `listings_d`,
   `listings_r`, `listings_w`, `profile_r`, `profile_w`, `shops_r`, `shops_w`,
   `transactions_r`, `transactions_w`.
 - Access tokens last **1 hour**; refresh tokens last **90 days** and are
-  reissued on each refresh (rotating) — must persist the *new* refresh token
+  reissued on each refresh (rotating) — must persist the _new_ refresh token
   every time or the chain breaks.
 - 32 operations work with the API key alone (public taxonomy/listing reads).
 
 **Rate limits** (per API key, confirmed via Etsy docs/community reports):
+
 - 10,000 requests/day, 10 requests/second, by default.
 - Every response carries `x-limit-per-day`, `x-remaining-today`,
   `x-limit-per-second`, `x-remaining-this-second`.
@@ -71,7 +73,7 @@ agents once the core is settled.
   token storage is pluggable (interface + in-memory default), not
   opinionated about where consumers persist refresh tokens.
 - **Errors**: typed `EtsyApiError` wrapping status code + `ErrorSchema.error`
-  + rate-limit snapshot, thrown uniformly by the transport layer.
+  - rate-limit snapshot, thrown uniformly by the transport layer.
 - **Module layout**: one resource module per OpenAPI tag group (e.g.
   `listings`, `shops`, `shippingProfiles`, `receipts`, `transactions`,
   `payments`, `taxonomy`, `users`), composed onto a single `EtsyClient` facade.
@@ -80,27 +82,27 @@ agents once the core is settled.
 
 ## 3. Agent roles
 
-| Agent | Responsibility |
-|---|---|
-| **Architect** | Owns Stage 0–1 decisions above, the module boundary contract, and the codegen strategy. Reviews every other agent's output against that contract. |
-| **Platform Engineer** | Builds the core transport: fetch wrapper, auth (API key + OAuth2/PKCE + refresh rotation), rate-limit tracking, retry/backoff, pagination helper, `EtsyApiError`. |
-| **Codegen Engineer** | Builds/owns the script that turns `docs/3.0.0.json` into base TS types (schemas + per-operation request/response types) and regenerates them on spec updates. |
-| **Resource Engineers (×4, parallel)** | Each owns a cluster of tags, implements resource classes on top of the Platform Engineer's client and the Codegen Engineer's types. Clusters below. |
-| **Test Engineer** | Mock-server / MSW-based unit tests per resource, plus transport-layer tests (auth refresh, rate-limit backoff, error mapping, pagination). |
-| **Docs Engineer** | README (Getting Started/Installation/Examples sections currently empty), TypeDoc API reference, OAuth walkthrough, per-resource usage snippets. |
-| **Release Engineer** | Package metadata, dual build, CI (lint/typecheck/test/build matrix), Changesets-based versioning, npm publish + provenance, CHANGELOG automation. |
-| **QA / Security Reviewer** | Runs `/security-review`, dependency audit, license check (Apache-2.0 compatibility of deps), verifies no secrets/tokens ever get logged or serialized in errors. |
+| Agent                                 | Responsibility                                                                                                                                                    |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Architect**                         | Owns Stage 0–1 decisions above, the module boundary contract, and the codegen strategy. Reviews every other agent's output against that contract.                 |
+| **Platform Engineer**                 | Builds the core transport: fetch wrapper, auth (API key + OAuth2/PKCE + refresh rotation), rate-limit tracking, retry/backoff, pagination helper, `EtsyApiError`. |
+| **Codegen Engineer**                  | Builds/owns the script that turns `docs/3.0.0.json` into base TS types (schemas + per-operation request/response types) and regenerates them on spec updates.     |
+| **Resource Engineers (×4, parallel)** | Each owns a cluster of tags, implements resource classes on top of the Platform Engineer's client and the Codegen Engineer's types. Clusters below.               |
+| **Test Engineer**                     | Mock-server / MSW-based unit tests per resource, plus transport-layer tests (auth refresh, rate-limit backoff, error mapping, pagination).                        |
+| **Docs Engineer**                     | README (Getting Started/Installation/Examples sections currently empty), TypeDoc API reference, OAuth walkthrough, per-resource usage snippets.                   |
+| **Release Engineer**                  | Package metadata, dual build, CI (lint/typecheck/test/build matrix), Changesets-based versioning, npm publish + provenance, CHANGELOG automation.                 |
+| **QA / Security Reviewer**            | Runs `/security-review`, dependency audit, license check (Apache-2.0 compatibility of deps), verifies no secrets/tokens ever get logged or serialized in errors.  |
 
 Resource clusters for the parallel Resource Engineers, sized to roughly even
 operation counts:
 
 1. **Listings & Media** — `ShopListing`, `ShopListing File/Image/Video/
-   VariationImage/Translation/Personalization` (34 ops)
+VariationImage/Translation/Personalization` (34 ops)
 2. **Inventory & Catalog** — `ShopListing Inventory/Product/Offering`,
    `SellerTaxonomy`, `BuyerTaxonomy`, `Review` (9 ops)
 3. **Shop Configuration** — `Shop`, `Shop Section`, `Shop ShippingProfile`,
    `Shop Return Policy`, `Shop ProcessingProfiles`, `Shop
-   HolidayPreferences`, `Shop ProductionPartner` (32 ops)
+HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 4. **Commerce & Identity** — `Shop Receipt`, `Shop Receipt Transactions`,
    `Payment`, `Ledger Entry`, `User`, `UserAddress`, `Other` (28 ops)
 
@@ -109,6 +111,7 @@ operation counts:
 ## 4. Stages
 
 ### Stage 0 — Discovery & contract (Architect, solo)
+
 - Confirm target Node/browser support matrix and TS version floor.
 - Finalize module boundary contract (client facade shape, error type, token
   storage interface) other agents build against.
@@ -116,6 +119,7 @@ operation counts:
   to `docs/ARCHITECTURE.md`; nothing downstream starts until this merges.
 
 ### Stage 1 — Scaffolding (Release Engineer, solo)
+
 - `package.json` (name `@richardmcquiston01/etsy-api`, `exports` map for
   dual ESM/CJS, `sideEffects: false`), `tsconfig.json`, `tsup`/build config,
   ESLint + Prettier, Vitest, `.npmignore`/`files` allowlist.
@@ -124,6 +128,7 @@ operation counts:
   `src/index.ts`; CI green on a throwaway commit.
 
 ### Stage 2 — Codegen (Codegen Engineer, solo, depends on Stage 0)
+
 - Script (`scripts/codegen.ts`) that reads `docs/3.0.0.json` and emits
   `src/generated/schemas.ts` (81 schema types) and
   `src/generated/operations.ts` (per-operation params/request/response
@@ -135,6 +140,7 @@ operation counts:
   (`createDraftListing`, `updateListingInventory`, `uploadListingImage`).
 
 ### Stage 3 — Core transport (Platform Engineer, solo, depends on Stage 0+2)
+
 - `EtsyHttpClient`: `fetch`-based, injects `x-api-key`, attaches bearer token
   when present, parses `ErrorSchema` into `EtsyApiError`, tracks
   `x-limit-per-second`/`x-remaining-today` from response headers, retries
@@ -149,6 +155,7 @@ operation counts:
   PKCE challenge generation against a known test vector.
 
 ### Stage 4 — Resource modules (4 Resource Engineers, parallel, depends on Stage 2+3)
+
 - Each engineer implements their cluster's resource class(es) using
   `EtsyHttpClient` + generated types only — no direct `fetch` calls.
 - Form-encoded vs. multipart vs. JSON bodies handled per operation per the
@@ -161,6 +168,7 @@ operation counts:
   PR against the contract before merge.
 
 ### Stage 5 — Testing (Test Engineer, depends on Stage 3, overlaps Stage 4)
+
 - Shared MSW (or `undici` mock agent) fixtures per resource cluster, built
   incrementally as each Stage 4 PR lands rather than after all four finish.
 - Contract tests validating request shape (headers, body encoding, query
@@ -170,6 +178,7 @@ operation counts:
 - **Exit criteria**: full suite green in CI; coverage gate enforced.
 
 ### Stage 6 — Documentation (Docs Engineer, depends on Stage 4 substantially complete)
+
 - Fill in README's empty sections: Prerequisites, Installation, Adding to
   Project, Examples (API-key-only quickstart + full OAuth2/PKCE quickstart).
 - TypeDoc-generated API reference published alongside the package (e.g.
@@ -181,6 +190,7 @@ operation counts:
   authenticated client working from the README alone.
 
 ### Stage 7 — Packaging & release engineering (Release Engineer, depends on Stage 1)
+
 - Changesets for versioning + auto-generated `CHANGELOG.md`.
 - npm publish workflow (provenance via `--provenance`, `NPM_TOKEN` secret,
   publish gated on Stage 5's CI + tag push).
@@ -192,6 +202,7 @@ operation counts:
   project via both ESM and CJS entry points.
 
 ### Stage 8 — QA & security review (QA/Security Reviewer, depends on Stage 4–7)
+
 - Run `/security-review` against the full diff.
 - Dependency audit (`npm audit`, license compatibility with Apache-2.0).
 - Manual check: no token/secret ever appears in thrown errors, logs, or
@@ -200,6 +211,7 @@ operation counts:
   in the PR that promotes `0.1.0-beta.x` to `1.0.0`.
 
 ### Stage 9 — Beta → GA
+
 - Publish `0.1.0` (or `0.x` line) to npm, dogfood against a real Etsy app
   (sandbox keys), collect feedback for 1–2 weeks.
 - Address feedback, then cut `1.0.0`.
@@ -253,6 +265,6 @@ deliverable).
 
 ---
 
-*This document is a planning artifact. Stage 0 is complete — see
+_This document is a planning artifact. Stage 0 is complete — see
 `docs/ARCHITECTURE.md` for the locked module contract. Stage 1 (scaffolding)
-is next.*
+is next._
