@@ -237,19 +237,22 @@ this is the main opportunity to compress wall-clock time beyond the naive
 
 ---
 
-## 6. Open questions for you
+## 6. Decisions (resolved)
 
-1. **Node/browser support matrix** — any minimum Node version or specific
-   runtimes (Cloudflare Workers, Deno, Bun) to target explicitly?
-2. **Token persistence** — should the package ship a default `TokenStore`
-   (e.g. filesystem for Node) or stay storage-agnostic with in-memory only?
-3. **Versioning line** — start at `0.1.0` while iterating, or go straight
-   for `1.0.0` given the API surface is well-specified by the OpenAPI doc?
-4. **Scope** — should Stage 4's four clusters all ship in the first release,
-   or would you rather GA with Listings + Shop Configuration first and add
-   Commerce/Payments in a follow-up minor?
+1. **Node/browser support matrix** — Node.js 18+, browsers, and edge
+   runtimes (Workers/Deno/Bun). Core stays `fetch`-only with no Node
+   built-ins.
+2. **Token persistence** — storage-agnostic: ship the `TokenStore`
+   interface plus a trivial `InMemoryTokenStore` default only.
+3. **Versioning line** — start at `0.1.0`.
+4. **Scope** — all four Stage 4 clusters ship together in `0.1.0`; no
+   staggered release.
+
+Full interface-level detail lives in `docs/ARCHITECTURE.md` (Stage 0
+deliverable).
 
 ---
 
-*This document is a planning artifact. Once you've reviewed and adjusted the
-stages/clusters/open questions above, the next step is executing Stage 0.*
+*This document is a planning artifact. Stage 0 is complete — see
+`docs/ARCHITECTURE.md` for the locked module contract. Stage 1 (scaffolding)
+is next.*
