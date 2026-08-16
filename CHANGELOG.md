@@ -19,5 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/ARCHITECTURE.md`: Stage 0 interfaces-only contract (client config,
   transport, auth/OAuth2+PKCE, error/rate-limit types, resource module
   conventions) that later stages build against.
+- README: "Buy Me a Coffee" donation section.
+- `donate.svg`: QR code linking to the Stripe donation URL, generated
+  with segno.
 
 [Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/dev...HEAD
