@@ -404,3 +404,101 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("EtsyHttpClient — baseUrl", () => {
+  it("preserves a path prefix on a non-default baseUrl instead of discarding it", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "http://localhost:3000/etsy/v3/application/openapi-ping",
+      );
+      return jsonResponse({ ping: "pong" });
+    });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:3000/etsy",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("still resolves correctly against the default baseUrl (no path prefix to preserve)", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe("https://openapi.etsy.com/v3/application/openapi-ping");
+      return jsonResponse({ ping: "pong" });
+    });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+  });
+});
+
+describe("EtsyHttpClient — cancellation", () => {
+  it("aborts the underlying fetch when the caller-provided signal aborts", async () => {
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    const controller = new AbortController();
+
+    const promise = client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+      signal: controller.signal,
+    });
+
+    controller.abort();
+
+    await expect(promise).rejects.toThrow(/aborted/i);
+  });
+
+  it("aborts a request that exceeds the configured timeout", async () => {
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "TimeoutError"));
+          });
+        }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+      timeoutMs: 10,
+    });
+
+    const promise = client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+
+    await expect(promise).rejects.toThrow();
+  });
+});

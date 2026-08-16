@@ -75,4 +75,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `code_challenge` requires `SubtleCrypto.digest()`, which has no
   synchronous form.
 
+### Fixed
+
+Addressed automated PR review findings on Stage 3, all verified against
+the actual code before fixing:
+
+- **`EtsyOAuth.getValidAccessToken()`**: two concurrent calls racing near
+  expiry both called `refresh()` with the same (rotating) refresh token;
+  the second exchange would fail with an already-consumed token. Now
+  dedupes concurrent refreshes behind a single in-flight promise.
+- **`EtsyHttpClient`**: the injected/global `fetch` was stored unbound and
+  invoked as `this.#fetch(...)`, which throws `TypeError: Illegal
+invocation` in spec-compliant browsers (the receiver becomes the
+  `EtsyHttpClient` instance instead of the global). Now bound at
+  construction.
+- **`paginate()`**: `{ limit: 0 }` looped forever — `results.length < 0`
+  is never true, so the "short page" termination check could never fire
+  and `offset` never advanced. Now validates `limit` (positive integer)
+  and `offset` (non-negative integer) up front and throws `RangeError`.
+- **`EtsyHttpClient`**: requests had no timeout or cancellation, so a
+  stalled Etsy response hung the caller indefinitely (multiplied by the
+  429 retry loop). Added `EtsyClientConfig.timeoutMs` (default 30s, via
+  `AbortSignal.timeout()`, a fresh window per retry attempt) and
+  `RequestOptions.signal` for caller-provided cancellation, combined
+  without relying on `AbortSignal.any()` (unavailable on Node 18).
+- **`EtsyOAuth`**: the token endpoint always used `globalThis.fetch`
+  directly, so a consumer in a restricted environment could construct an
+  `EtsyHttpClient` (injectable fetch) but not complete the OAuth flow.
+  Added `EtsyOAuthConfig.fetch`, mirroring `EtsyClientConfig.fetch`.
+- **`EtsyHttpClient`**: `new URL(path, baseUrl)` silently discarded any
+  path prefix on a non-default `baseUrl` (e.g. a mock server mounted at
+  `/etsy`), since an absolute-path relative reference replaces the
+  entire base path per the URL spec. Now joins `baseUrl`'s path with the
+  request path explicitly.
+
 [Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/dev...HEAD

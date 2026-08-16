@@ -20,6 +20,10 @@ export interface EtsyOAuthConfig {
   scopes: EtsyScope[];
   /** Defaults to InMemoryTokenStore. */
   tokenStore?: TokenStore;
+  /** Injectable fetch implementation; defaults to global fetch. Mirrors
+   *  EtsyClientConfig.fetch so the OAuth flow works in the same restricted
+   *  environments EtsyHttpClient supports. */
+  fetch?: typeof fetch;
 }
 
 interface EtsyTokenResponse {
@@ -76,12 +80,10 @@ function toTokenSet(response: EtsyTokenResponse, requestedScopes: EtsyScope[]): 
   };
 }
 
-async function requestToken(body: Record<string, string>): Promise<EtsyTokenResponse> {
-  const fetchImpl = globalThis.fetch;
-  if (!fetchImpl) {
-    throw new Error("EtsyOAuth requires a global fetch implementation, which is unavailable here.");
-  }
-
+async function requestToken(
+  fetchImpl: typeof fetch,
+  body: Record<string, string>,
+): Promise<EtsyTokenResponse> {
   const response = await fetchImpl(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -102,12 +104,26 @@ export class EtsyOAuth {
   #redirectUri: string;
   #scopes: EtsyScope[];
   #tokenStore: TokenStore;
+  #fetch: typeof fetch;
+  /** Dedupes concurrent refresh() calls so two requests racing near expiry
+   *  don't both spend the same (rotating) refresh token — the second
+   *  exchange would otherwise fail with an already-consumed token. */
+  #refreshInFlight: Promise<TokenSet> | undefined;
 
   constructor(config: EtsyOAuthConfig) {
+    const fetchImpl = config.fetch ?? globalThis.fetch?.bind(globalThis);
+    if (!fetchImpl) {
+      throw new Error(
+        "EtsyOAuth requires a fetch implementation. Pass one via `fetch` in " +
+          "EtsyOAuthConfig, or run in an environment with a global fetch.",
+      );
+    }
+
     this.#clientId = config.clientId;
     this.#redirectUri = config.redirectUri;
     this.#scopes = config.scopes;
     this.#tokenStore = config.tokenStore ?? new InMemoryTokenStore();
+    this.#fetch = fetchImpl;
   }
 
   /**
@@ -138,7 +154,7 @@ export class EtsyOAuth {
    * Exchanges an authorization code for a TokenSet; persists via TokenStore.
    */
   async exchangeCode(code: string, codeVerifier: string): Promise<TokenSet> {
-    const response = await requestToken({
+    const response = await requestToken(this.#fetch, {
       grant_type: "authorization_code",
       client_id: this.#clientId,
       redirect_uri: this.#redirectUri,
@@ -152,7 +168,7 @@ export class EtsyOAuth {
 
   /** Rotates the refresh token; persists the new TokenSet via TokenStore. */
   async refresh(refreshToken: string): Promise<TokenSet> {
-    const response = await requestToken({
+    const response = await requestToken(this.#fetch, {
       grant_type: "refresh_token",
       client_id: this.#clientId,
       refresh_token: refreshToken,
@@ -178,7 +194,11 @@ export class EtsyOAuth {
     if (tokens.expiresAt - Date.now() > EXPIRY_BUFFER_MS) {
       return tokens.accessToken;
     }
-    const refreshed = await this.refresh(tokens.refreshToken);
+
+    this.#refreshInFlight ??= this.refresh(tokens.refreshToken).finally(() => {
+      this.#refreshInFlight = undefined;
+    });
+    const refreshed = await this.#refreshInFlight;
     return refreshed.accessToken;
   }
 }

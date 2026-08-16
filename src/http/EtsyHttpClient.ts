@@ -4,6 +4,7 @@ import { EtsyApiError, type RateLimitSnapshot } from "./EtsyApiError.js";
 const DEFAULT_BASE_URL = "https://openapi.etsy.com";
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_MAX_BACKOFF_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 /** The three shapes #buildBody ever produces; avoids depending on the DOM-lib-only `BodyInit` alias. */
 type FetchBody = string | URLSearchParams | FormData;
@@ -25,6 +26,25 @@ export interface RequestOptions {
   auth: "apiKey" | "oauth";
   /** For error attribution and future request-level telemetry. */
   operationId: string;
+  /** Caller-provided cancellation, combined with the client's per-request timeout. */
+  signal?: AbortSignal;
+}
+
+/** Combines an optional caller signal with a fresh per-attempt timeout signal.
+ *  Avoids relying on AbortSignal.any(), which isn't available on Node 18. */
+function combineSignals(callerSignal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  if (!callerSignal) return timeoutSignal;
+
+  const controller = new AbortController();
+  const abortFrom = (signal: AbortSignal) => controller.abort(signal.reason as unknown);
+  if (callerSignal.aborted) abortFrom(callerSignal);
+  else if (timeoutSignal.aborted) abortFrom(timeoutSignal);
+  else {
+    callerSignal.addEventListener("abort", () => abortFrom(callerSignal), { once: true });
+    timeoutSignal.addEventListener("abort", () => abortFrom(timeoutSignal), { once: true });
+  }
+  return controller.signal;
 }
 
 function parseIntHeader(headers: Headers, name: string): number | undefined {
@@ -143,10 +163,14 @@ export class EtsyHttpClient {
   readonly #auth: EtsyClientConfig["auth"];
   readonly #maxRetries: number;
   readonly #maxBackoffMs: number;
+  readonly #timeoutMs: number;
   #lastRateLimit: RateLimitSnapshot | undefined;
 
   constructor(config: EtsyClientConfig) {
-    const fetchImpl = config.fetch ?? globalThis.fetch;
+    // An unbound global fetch throws "Illegal invocation" in spec-compliant
+    // browsers once stored on `this` and called as `this.#fetch(...)` — the
+    // receiver becomes the EtsyHttpClient instance instead of the global.
+    const fetchImpl = config.fetch ?? globalThis.fetch?.bind(globalThis);
     if (!fetchImpl) {
       throw new Error(
         "EtsyHttpClient requires a fetch implementation. Pass one via `fetch` in " +
@@ -160,6 +184,7 @@ export class EtsyHttpClient {
     this.#auth = config.auth;
     this.#maxRetries = config.retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.#maxBackoffMs = config.retry?.maxBackoffMs ?? DEFAULT_MAX_BACKOFF_MS;
+    this.#timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /** Most recent rate-limit snapshot seen from any response. */
@@ -185,7 +210,15 @@ export class EtsyHttpClient {
 
     const body = this.#buildBody(options.body, headers);
 
-    return this.#send<T>(url, options.method, headers, body, options.operationId, 0);
+    return this.#send<T>(
+      url,
+      options.method,
+      headers,
+      body,
+      options.operationId,
+      options.signal,
+      0,
+    );
   }
 
   async #send<T>(
@@ -194,9 +227,13 @@ export class EtsyHttpClient {
     headers: Headers,
     body: FetchBody | undefined,
     operationId: string,
+    callerSignal: AbortSignal | undefined,
     attempt: number,
   ): Promise<T> {
-    const response = await this.#fetch(url, { method, headers, ...(body ? { body } : {}) });
+    // A fresh timeout window per attempt — a slow-but-eventually-429 server
+    // doesn't get to consume the whole budget on one hung attempt.
+    const signal = combineSignals(callerSignal, this.#timeoutMs);
+    const response = await this.#fetch(url, { method, headers, signal, ...(body ? { body } : {}) });
 
     const rateLimit = parseRateLimitHeaders(response.headers);
     if (rateLimit) this.#lastRateLimit = rateLimit;
@@ -204,7 +241,7 @@ export class EtsyHttpClient {
     if (response.status === 429 && attempt < this.#maxRetries) {
       const delayMs = computeRetryDelayMs(response, attempt, this.#maxBackoffMs);
       await sleep(delayMs);
-      return this.#send<T>(url, method, headers, body, operationId, attempt + 1);
+      return this.#send<T>(url, method, headers, body, operationId, callerSignal, attempt + 1);
     }
 
     if (!response.ok) {
@@ -236,7 +273,14 @@ export class EtsyHttpClient {
       );
     }
 
-    const url = new URL(path, this.#baseUrl);
+    // `path` always starts with "/" (e.g. "/v3/application/..."), and
+    // `new URL(absolutePath, base)` replaces the *entire* path of `base` per
+    // the URL spec — silently dropping any path prefix in a non-default
+    // baseUrl (e.g. a mock server mounted at "http://localhost:3000/etsy").
+    // Join base.pathname + path explicitly instead.
+    const base = new URL(this.#baseUrl);
+    const basePath = base.pathname === "/" ? "" : base.pathname.replace(/\/$/, "");
+    const url = new URL(basePath + path, base.origin);
     for (const [key, value] of Object.entries(options.query ?? {})) {
       if (value === undefined) continue;
       url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));

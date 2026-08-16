@@ -82,4 +82,32 @@ describe("paginate", () => {
 
     expect(calls[0]).toEqual({ limit: 25, offset: 0 });
   });
+
+  it("rejects a zero limit instead of looping forever (0 < 0 never advances offset)", async () => {
+    const { fetchPage, calls } = makeFetchPage([1, 2, 3]);
+
+    await expect(collect(paginate(fetchPage, { limit: 0 }))).rejects.toThrow(RangeError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects a negative limit", async () => {
+    const { fetchPage, calls } = makeFetchPage([1, 2, 3]);
+
+    await expect(collect(paginate(fetchPage, { limit: -5 }))).rejects.toThrow(RangeError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects a non-integer limit", async () => {
+    const { fetchPage, calls } = makeFetchPage([1, 2, 3]);
+
+    await expect(collect(paginate(fetchPage, { limit: 2.5 }))).rejects.toThrow(RangeError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects a negative offset", async () => {
+    const { fetchPage, calls } = makeFetchPage([1, 2, 3]);
+
+    await expect(collect(paginate(fetchPage, { offset: -1 }))).rejects.toThrow(RangeError);
+    expect(calls).toHaveLength(0);
+  });
 });

@@ -19,4 +19,7 @@ export interface EtsyClientConfig {
    *  73 operations that need OAuth scopes. */
   auth?: EtsyOAuth;
   retry?: RetryConfig;
+  /** Per-request timeout in ms, applied via AbortSignal.timeout(). Default
+   *  30_000. Each 429 retry gets a fresh timeout window. */
+  timeoutMs?: number;
 }

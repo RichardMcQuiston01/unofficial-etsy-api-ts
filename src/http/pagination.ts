@@ -28,6 +28,15 @@ export async function* paginate<T>(
   const limit = start.limit ?? DEFAULT_PAGE_SIZE;
   let offset = start.offset ?? 0;
 
+  // A limit <= 0 can never satisfy `results.length < limit`, so the loop
+  // below would never terminate — reject it up front instead of hanging.
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new RangeError(`paginate(): limit must be a positive integer, got ${limit}`);
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new RangeError(`paginate(): offset must be a non-negative integer, got ${offset}`);
+  }
+
   for (;;) {
     const page = await fetchPage({ limit, offset });
     for (const item of page.results) {

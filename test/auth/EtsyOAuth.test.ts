@@ -26,12 +26,13 @@ const PKCE_VECTORS: { randomBytes: number[]; verifier: string; challenge: string
   },
 ];
 
-function makeOAuth(tokenStore: TokenStore = new InMemoryTokenStore()) {
+function makeOAuth(tokenStore: TokenStore = new InMemoryTokenStore(), fetchImpl?: typeof fetch) {
   return new EtsyOAuth({
     clientId: "test-client-id",
     redirectUri: "https://example.com/callback",
     scopes: ["listings_r", "listings_w"],
     tokenStore,
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
 }
 
@@ -80,16 +81,12 @@ describe("EtsyOAuth PKCE", () => {
 });
 
 describe("EtsyOAuth token exchange and refresh", () => {
-  const originalFetch = globalThis.fetch;
-
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
   it("exchangeCode posts the authorization_code grant and persists the resulting TokenSet", async () => {
     const tokenStore: TokenStore = new InMemoryTokenStore();
-    const oauth = makeOAuth(tokenStore);
 
     const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       const body = new URLSearchParams(init?.body as string);
@@ -107,7 +104,7 @@ describe("EtsyOAuth token exchange and refresh", () => {
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     });
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const oauth = makeOAuth(tokenStore, fetchMock as unknown as typeof fetch);
 
     const tokens = await oauth.exchangeCode("auth-code-123", "verifier-abc");
 
@@ -126,10 +123,9 @@ describe("EtsyOAuth token exchange and refresh", () => {
       scope: ["listings_r"],
     };
     await tokenStore.save(fresh);
-    const oauth = makeOAuth(tokenStore);
 
     const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    const oauth = makeOAuth(tokenStore, fetchMock);
 
     const token = await oauth.getValidAccessToken();
 
@@ -146,7 +142,6 @@ describe("EtsyOAuth token exchange and refresh", () => {
       scope: ["listings_r"],
     };
     await tokenStore.save(expired);
-    const oauth = makeOAuth(tokenStore);
 
     const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       const body = new URLSearchParams(init?.body as string);
@@ -162,7 +157,7 @@ describe("EtsyOAuth token exchange and refresh", () => {
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     });
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const oauth = makeOAuth(tokenStore, fetchMock as unknown as typeof fetch);
 
     const token = await oauth.getValidAccessToken();
 
@@ -172,17 +167,52 @@ describe("EtsyOAuth token exchange and refresh", () => {
     expect(persisted?.refreshToken).toBe("new-refresh");
   });
 
+  it("getValidAccessToken deduplicates concurrent refreshes so a rotating refresh token is only spent once", async () => {
+    const tokenStore: TokenStore = new InMemoryTokenStore();
+    const expired: TokenSet = {
+      accessToken: "old-access",
+      refreshToken: "old-refresh",
+      expiresAt: Date.now() - 1000,
+      scope: ["listings_r"],
+    };
+    await tokenStore.save(expired);
+
+    let calls = 0;
+    const fetchMock = vi.fn(async () => {
+      calls += 1;
+      return new Response(
+        JSON.stringify({
+          access_token: `new-access-${calls}`,
+          refresh_token: `new-refresh-${calls}`,
+          token_type: "Bearer",
+          expires_in: 3600,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    const oauth = makeOAuth(tokenStore, fetchMock);
+
+    // Two callers race to refresh the same expired token concurrently.
+    const [first, second] = await Promise.all([
+      oauth.getValidAccessToken(),
+      oauth.getValidAccessToken(),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(first).toBe(second);
+    expect(first).toBe("new-access-1");
+  });
+
   it("getValidAccessToken throws when no tokens have been stored yet", async () => {
     const oauth = makeOAuth();
     await expect(oauth.getValidAccessToken()).rejects.toThrow(/no tokens available/i);
   });
 
   it("surfaces a clear error when the token endpoint rejects the request", async () => {
-    const oauth = makeOAuth();
     const fetchMock = vi.fn(
       async () => new Response("invalid_grant: code already used", { status: 400 }),
     );
-    globalThis.fetch = fetchMock;
+    const oauth = makeOAuth(new InMemoryTokenStore(), fetchMock);
 
     await expect(oauth.exchangeCode("bad-code", "verifier")).rejects.toThrow(
       /token request failed \(400\).*invalid_grant/is,
