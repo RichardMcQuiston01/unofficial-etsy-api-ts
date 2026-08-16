@@ -37,13 +37,19 @@ Contributor setup for working on this package itself:
 
 ```sh
 npm install
-npm run build        # dual ESM/CJS build via tsup
-npm run test          # unit tests via Vitest
-npm run test:coverage # unit tests with coverage
-npm run lint           # ESLint
-npm run format:check    # Prettier check
-npm run typecheck        # tsc --noEmit
+npm run codegen        # regenerate src/generated/** from docs/<version>.json
+npm run build          # dual ESM/CJS build via tsup
+npm run test            # unit tests via Vitest
+npm run test:coverage    # unit tests with coverage
+npm run lint              # ESLint
+npm run format:check       # Prettier check
+npm run typecheck           # tsc --noEmit
 ```
+
+`src/generated/**` (schema and per-operation request/response types) is
+generated from `docs/<version>.json` — see `docs/ARCHITECTURE.md`. To pick up
+a new Etsy spec version, drop the new `docs/<X.Y.Z>.json` file in place and
+rerun `npm run codegen`; it always uses the highest-semver spec file present.
 
 ## Buy Me a Coffee
 
