@@ -108,5 +108,8 @@ invocation` in spec-compliant browsers (the receiver becomes the
   `/etsy`), since an absolute-path relative reference replaces the
   entire base path per the URL spec. Now joins `baseUrl`'s path with the
   request path explicitly.
+- `.gitignore`: ignore `.claude/`, which holds local Claude Code
+  tooling state (e.g. isolated git worktrees for parallel Stage 4
+  work) that shouldn't be tracked in the repo.
 
 [Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/dev...HEAD
