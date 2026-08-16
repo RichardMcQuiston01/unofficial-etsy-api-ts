@@ -62,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     independently-computed (Node `crypto`, a different implementation
     path than the Web Crypto API under test) known vectors. 97%+
     statement / 100% function coverage on the new code.
+- `src/resources/commerce/`: `CommerceResource` (Stage 4 resource cluster
+  — Commerce & Identity), covering all 20 `Shop Receipt`/
+  `Shop Receipt Transactions`/`Payment`/`Ledger Entry`/`User`/
+  `UserAddress`/`Other` operations, grouped as `commerce.receipts`,
+  `commerce.transactions`, `commerce.payments`, `commerce.ledgerEntries`,
+  `commerce.user` (nesting `.addresses`), plus top-level
+  `ping()`/`tokenScopes()` for the `Other` tag (the only two
+  apiKey-only operations in this cluster — everything else needs
+  `oauth`, since it's private shop/user data). Every method routes
+  through `EtsyHttpClient`, using the exact generated
+  `<OperationId>Params`/`RequestBody`/`Response` types per
+  `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
+  `test/resources/commerce/commerce.test.ts`.
 
 ### Changed
 
