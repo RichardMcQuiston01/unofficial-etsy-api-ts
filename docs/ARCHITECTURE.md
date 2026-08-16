@@ -63,6 +63,11 @@ interface EtsyClientConfig {
    *  73 operations that need OAuth scopes. */
   auth?: EtsyOAuth;
   retry?: RetryConfig;
+  /** Per-request timeout in ms, applied via AbortSignal.timeout(). Default
+   *  30_000. Each 429 retry gets a fresh timeout window. Added during Stage
+   *  3 implementation — the original contract had no cancellation story,
+   *  which meant a stalled Etsy response could hang a caller indefinitely. */
+  timeoutMs?: number;
 }
 
 interface RetryConfig {
@@ -121,20 +126,35 @@ interface EtsyOAuthConfig {
   scopes: EtsyScope[];
   /** Defaults to InMemoryTokenStore. */
   tokenStore?: TokenStore;
+  /** Injectable fetch implementation; defaults to global fetch. Added
+   *  during Stage 3 implementation to match EtsyClientConfig.fetch — the
+   *  original contract left the OAuth token endpoint calls tied to
+   *  globalThis.fetch, so a consumer in a restricted environment could
+   *  construct an EtsyHttpClient but not complete the OAuth flow. */
+  fetch?: typeof fetch;
 }
 
 declare class EtsyOAuth {
   constructor(config: EtsyOAuthConfig);
   /** Builds the etsy.com/oauth/connect URL and generates a fresh PKCE pair.
-   *  Caller is responsible for persisting the verifier for the callback. */
-  createAuthorizationUrl(state: string): { url: string; pkce: PkceChallenge };
+   *  Caller is responsible for persisting the verifier for the callback.
+   *  Async because deriving the S256 code_challenge requires
+   *  SubtleCrypto.digest(), which has no synchronous form (amended during
+   *  Stage 3 implementation — the original draft of this contract declared
+   *  this method synchronous, which turned out to be impossible to satisfy
+   *  without either using the weaker "plain" PKCE method or hand-rolling
+   *  SHA-256 instead of using the platform's Web Crypto API). */
+  createAuthorizationUrl(state: string): Promise<{ url: string; pkce: PkceChallenge }>;
   /** Exchanges an authorization code for a TokenSet; persists via TokenStore. */
   exchangeCode(code: string, codeVerifier: string): Promise<TokenSet>;
   /** Rotates the refresh token; persists the new TokenSet via TokenStore. */
   refresh(refreshToken: string): Promise<TokenSet>;
   /** Returns a currently-valid access token, transparently refreshing (and
    *  persisting) when within a short expiry window. Called internally by
-   *  EtsyHttpClient — resource modules never call this directly. */
+   *  EtsyHttpClient — resource modules never call this directly. Concurrent
+   *  calls that land during a refresh share a single in-flight refresh()
+   *  rather than each spending the (rotating) refresh token — a second
+   *  refresh() with an already-consumed refresh token would fail. */
   getValidAccessToken(): Promise<string>;
 }
 ```
@@ -184,6 +204,9 @@ interface RequestOptions {
   auth: "apiKey" | "oauth";
   /** For error attribution and future request-level telemetry. */
   operationId: string;
+  /** Caller-provided cancellation, combined with EtsyClientConfig.timeoutMs.
+   *  Added during Stage 3 implementation alongside timeoutMs. */
+  signal?: AbortSignal;
 }
 
 declare class EtsyHttpClient {
@@ -220,7 +243,10 @@ interface PaginatedResult<T> {
 }
 
 /** Wraps any list endpoint into an async iterator over individual items,
- *  advancing offset by the page size until a short page is returned. */
+ *  advancing offset by the page size until a short page is returned.
+ *  Throws RangeError synchronously (on first iteration) for a non-positive
+ *  limit or a negative offset — a limit <= 0 can never satisfy the
+ *  short-page termination check, which would otherwise loop forever. */
 declare function paginate<T>(
   fetchPage: (params: PaginationParams) => Promise<PaginatedResult<T>>,
   start?: PaginationParams,
