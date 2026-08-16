@@ -62,6 +62,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     independently-computed (Node `crypto`, a different implementation
     path than the Web Crypto API under test) known vectors. 97%+
     statement / 100% function coverage on the new code.
+- `src/resources/shop/`: `ShopResource` (Stage 4 resource cluster — Shop
+  Configuration), covering all 37 `Shop`/`Shop Section`/
+  `Shop ShippingProfile`/`Shop Return Policy`/`Shop ProcessingProfiles`/
+  `Shop HolidayPreferences`/`Shop ProductionPartner` operations, grouped
+  as `shop.sections`, `shop.shippingProfiles` (nesting `.destinations`
+  and `.upgrades`), `shop.returnPolicies`, `shop.processingProfiles`,
+  `shop.holidayPreferences`, `shop.productionPartners`, plus top-level
+  `Shop` tag methods (`get`/`update`/`getByOwnerUserId`/`find`). Every
+  method routes through `EtsyHttpClient`, using the exact generated
+  `<OperationId>Params`/`RequestBody`/`Response` types per
+  `docs/ARCHITECTURE.md`'s resource module conventions. 24 smoke tests
+  in `test/resources/shop/shop.test.ts`.
 
 ### Changed
 
