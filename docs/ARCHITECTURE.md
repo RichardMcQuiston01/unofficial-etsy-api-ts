@@ -126,8 +126,14 @@ interface EtsyOAuthConfig {
 declare class EtsyOAuth {
   constructor(config: EtsyOAuthConfig);
   /** Builds the etsy.com/oauth/connect URL and generates a fresh PKCE pair.
-   *  Caller is responsible for persisting the verifier for the callback. */
-  createAuthorizationUrl(state: string): { url: string; pkce: PkceChallenge };
+   *  Caller is responsible for persisting the verifier for the callback.
+   *  Async because deriving the S256 code_challenge requires
+   *  SubtleCrypto.digest(), which has no synchronous form (amended during
+   *  Stage 3 implementation — the original draft of this contract declared
+   *  this method synchronous, which turned out to be impossible to satisfy
+   *  without either using the weaker "plain" PKCE method or hand-rolling
+   *  SHA-256 instead of using the platform's Web Crypto API). */
+  createAuthorizationUrl(state: string): Promise<{ url: string; pkce: PkceChallenge }>;
   /** Exchanges an authorization code for a TokenSet; persists via TokenStore. */
   exchangeCode(code: string, codeVerifier: string): Promise<TokenSet>;
   /** Rotates the refresh token; persists the new TokenSet via TokenStore. */
