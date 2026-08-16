@@ -62,6 +62,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     independently-computed (Node `crypto`, a different implementation
     path than the Web Crypto API under test) known vectors. 97%+
     statement / 100% function coverage on the new code.
+- `src/resources/listings/`: `ListingsResource` (Stage 4 resource cluster
+  — Listings & Media), covering all 37 `ShopListing` (+ File/Image/
+  Video/VariationImage/Translation/Personalization) operations, grouped
+  as `listings.files`, `listings.images`, `listings.videos`,
+  `listings.variationImages`, `listings.translations`,
+  `listings.personalization`, plus 19 top-level `ShopListing` tag
+  methods (`create`/`get`/`delete`/`update`/`getByShop`/etc.). Every
+  method routes through `EtsyHttpClient`, using the exact generated
+  `<OperationId>Params`/`RequestBody`/`Response` types per
+  `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
+  `test/resources/listings/listings.test.ts`.
 
 ### Changed
 
