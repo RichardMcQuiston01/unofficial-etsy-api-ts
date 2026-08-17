@@ -4,6 +4,7 @@ import type { EtsyOAuth } from "../../../src/auth/EtsyOAuth.js";
 import { ListingsResource } from "../../../src/resources/listings/index.js";
 import type {
   UploadListingFileRequestBody,
+  UploadListingImageRequestBody,
   UploadListingVideoRequestBody,
 } from "../../../src/generated/operations.js";
 
@@ -74,6 +75,132 @@ describe("ListingsResource — GET (apiKey)", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("findAllActive omits the query string entirely when called with no params", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/active",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.findAllActive();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("findAllActive forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/active?keywords=candles",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.findAllActive({ keywords: "candles" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("findAllActiveByShop GETs the shop-scoped active-listings path", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/active",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.findAllActiveByShop(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("findAllActiveByShop forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/active?limit=10",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.findAllActiveByShop(1, { limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getFeaturedByShop GETs the featured-listings path", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/featured",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.getFeaturedByShop(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getFeaturedByShop forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/featured?limit=10",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.getFeaturedByShop(1, { limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShopSectionId requires shop_section_ids and comma-joins the array", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/shop-sections/listings?shop_section_ids=10%2C20",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.getByShopSectionId(1, { shop_section_ids: [10, 20] });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getProperties GETs the listing properties collection", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/properties",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.getProperties(1, 2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getProperty GETs a single listing property", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/2/properties/3",
+      );
+      return jsonResponse({ property_id: 3 });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    const result = await resource.getProperty(2, 3);
+
+    expect(result).toEqual({ property_id: 3 });
+  });
 });
 
 describe("ListingsResource — write operations (oauth)", () => {
@@ -135,6 +262,183 @@ describe("ListingsResource — write operations (oauth)", () => {
     await expect(resource.delete(7)).rejects.toThrow(/requires OAuth/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("update() PATCHes a form-encoded body to the shop-scoped listing path", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2",
+      );
+      expect(init?.method).toBe("PATCH");
+      expect((init?.body as URLSearchParams).get("title")).toBe("Updated title");
+      return jsonResponse({ listing_id: 2, title: "Updated title" });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.update(1, 2, { title: "Updated title" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShop() GETs the shop-scoped listings collection with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShop(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShop() forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings?limit=10",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShop(1, { limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getShippingByListingIds requires listing_ids and comma-joins the array, with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/batch/shipping?listing_ids=1%2C2",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getShippingByListingIds({ listing_ids: [1, 2] });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShopReceipt() GETs the receipt-scoped listings path with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/receipts/2/listings",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShopReceipt(1, 2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShopReceipt() forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/receipts/2/listings?limit=10",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShopReceipt(1, 2, { limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShopReturnPolicy() GETs the return-policy-scoped listings path with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/policies/return/2/listings",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShopReturnPolicy(1, 2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShopReturnPolicy() forwards query params when provided", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/policies/return/2/listings?legacy=true",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.getByShopReturnPolicy(1, 2, { legacy: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateProperty() PUTs a form-encoded body to the listing property path", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/properties/3",
+      );
+      expect(init?.method).toBe("PUT");
+      return jsonResponse({ property_id: 3 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.updateProperty(1, 2, 3, {
+      value_ids: [1],
+      values: ["Red"],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deleteProperty() sends a DELETE and returns undefined for a 204 response", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/properties/3",
+      );
+      expect(init?.method).toBe("DELETE");
+      return new Response(null, { status: 204 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.deleteProperty(1, 2, 3);
+
+    expect(result).toBeUndefined();
+  });
 });
 
 describe("ListingsResource.files — multipart upload", () => {
@@ -172,6 +476,58 @@ describe("ListingsResource.files — multipart upload", () => {
     expect(result).toEqual({ listing_file_id: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getAll() lists files for a listing with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/files",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.files.getAll(1, 2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() reads a single file with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/files/3",
+      );
+      return jsonResponse({ listing_file_id: 3 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.files.get(1, 2, 3);
+
+    expect(result).toEqual({ listing_file_id: 3 });
+  });
+
+  it("delete() sends a DELETE and returns undefined for a 204 response", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/files/3",
+      );
+      expect(init?.method).toBe("DELETE");
+      return new Response(null, { status: 204 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.files.delete(1, 2, 3);
+
+    expect(result).toBeUndefined();
+  });
 });
 
 describe("ListingsResource.images — no shop_id in the read path", () => {
@@ -189,6 +545,65 @@ describe("ListingsResource.images — no shop_id in the read path", () => {
     await resource.images.getAll(5);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() reads a single image with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/5/images/9",
+      );
+      return jsonResponse({ listing_image_id: 9 });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    const result = await resource.images.get(5, 9);
+
+    expect(result).toEqual({ listing_image_id: 9 });
+  });
+
+  it("upload() sends a multipart/form-data body built from a Blob, with oauth auth", async () => {
+    const blob = new Blob(["fake-image-bytes"], { type: "image/png" });
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/images",
+      );
+      expect(init?.method).toBe("POST");
+      expect(init?.body).toBeInstanceOf(FormData);
+      const body = init?.body as FormData;
+      const image = body.get("image") as Blob;
+      expect(image).toBeInstanceOf(Blob);
+      expect(image.size).toBe(blob.size);
+      return jsonResponse({ listing_image_id: 1 }, { status: 201 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.images.upload(1, 2, {
+      image: blob,
+    } as unknown as UploadListingImageRequestBody);
+
+    expect(result).toEqual({ listing_image_id: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() sends a DELETE and returns undefined for a 204 response", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/images/9",
+      );
+      expect(init?.method).toBe("DELETE");
+      return new Response(null, { status: 204 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.images.delete(1, 2, 9);
+
+    expect(result).toBeUndefined();
   });
 });
 
@@ -240,9 +655,57 @@ describe("ListingsResource.videos", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getAll() lists videos for a listing with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/5/videos",
+      );
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.videos.getAll(5);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() sends a DELETE and returns undefined for a 204 response", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/videos/9",
+      );
+      expect(init?.method).toBe("DELETE");
+      return new Response(null, { status: 204 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.videos.delete(1, 2, 9);
+
+    expect(result).toBeUndefined();
+  });
 });
 
 describe("ListingsResource.variationImages", () => {
+  it("getAll() lists variation images with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/variation-images",
+      );
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      return jsonResponse({ variation_images: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.variationImages.getAll(1, 2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("update() sends a JSON body with oauth auth", async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).toString()).toBe(
@@ -313,9 +776,65 @@ describe("ListingsResource.translations", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("update() PUTs a form-encoded body with oauth auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/translations/fr",
+      );
+      expect(init?.method).toBe("PUT");
+      expect((init?.body as URLSearchParams).get("title")).toBe("Une tasse mise à jour");
+      return jsonResponse({ title: "Une tasse mise à jour" });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.translations.update(1, 2, "fr", {
+      title: "Une tasse mise à jour",
+      description: "Une belle tasse mise à jour",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("ListingsResource.personalization — nullable query normalization", () => {
+  it("get() reads via GET with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/2/personalization",
+      );
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      return jsonResponse({ personalization_questions: [] });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.personalization.get(2);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() sends a DELETE and returns undefined for a 204 response", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/personalization",
+      );
+      expect(init?.method).toBe("DELETE");
+      return new Response(null, { status: 204 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.personalization.delete(1, 2);
+
+    expect(result).toBeUndefined();
+  });
+
   it("update() omits the query param when supports_multiple_personalization_questions is null", async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).toString()).toBe(

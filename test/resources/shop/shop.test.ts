@@ -116,6 +116,32 @@ describe("ShopResource.sections", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("get() GETs a single section with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/sections/9");
+      return jsonResponse({ shop_section_id: 9 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.sections.get(1, 9);
+
+    expect(result).toEqual({ shop_section_id: 9 });
+  });
+
+  it("update() PUTs a form body to a single section", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/sections/9");
+      expect((init?.body as URLSearchParams).get("title")).toBe("Renamed");
+      return jsonResponse({ shop_section_id: 9, title: "Renamed" });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.sections.update(1, 9, { title: "Renamed" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("delete() DELETEs a single section and returns undefined for 204", async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(init?.method).toBe("DELETE");
@@ -170,6 +196,57 @@ describe("ShopResource.shippingProfiles", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("getAll() GETs the shipping-profiles collection with oauth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles");
+      return jsonResponse({ count: 0, results: [] });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.shippingProfiles.getAll(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() GETs a single shipping profile", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles/2");
+      return jsonResponse({ shipping_profile_id: 2 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.shippingProfiles.get(1, 2);
+
+    expect(result).toEqual({ shipping_profile_id: 2 });
+  });
+
+  it("update() PUTs a form body to a single shipping profile", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles/2");
+      expect((init?.body as URLSearchParams).get("title")).toBe("Expedited");
+      return jsonResponse({ shipping_profile_id: 2, title: "Expedited" });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.shippingProfiles.update(1, 2, { title: "Expedited" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() DELETEs a single shipping profile and returns undefined for 204", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("DELETE");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles/2");
+      return new Response(null, { status: 204 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.shippingProfiles.delete(1, 2);
+
+    expect(result).toBeUndefined();
+  });
+
   describe(".destinations", () => {
     it("create() POSTs to the nested destinations path", async () => {
       const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -215,6 +292,22 @@ describe("ShopResource.shippingProfiles", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it("update() PUTs to the fully-nested destination path", async () => {
+      const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+        expect(init?.method).toBe("PUT");
+        expect(new URL(url).pathname).toBe(
+          "/v3/application/shops/1/shipping-profiles/2/destinations/3",
+        );
+        expect((init?.body as URLSearchParams).get("primary_cost")).toBe("7");
+        return jsonResponse({ shipping_profile_destination_id: 3 });
+      });
+
+      const shop = makeShop(fetchMock as unknown as typeof fetch);
+      await shop.shippingProfiles.destinations.update(1, 2, 3, { primary_cost: 7 });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it("delete() DELETEs the fully-nested destination path", async () => {
       const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
         expect(init?.method).toBe("DELETE");
@@ -232,6 +325,26 @@ describe("ShopResource.shippingProfiles", () => {
   });
 
   describe(".upgrades", () => {
+    it("create() POSTs to the nested upgrades path", async () => {
+      const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+        expect(init?.method).toBe("POST");
+        expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles/2/upgrades");
+        const body = init?.body as URLSearchParams;
+        expect(body.get("upgrade_name")).toBe("Fast Shipping");
+        return jsonResponse({ upgrade_id: 3 }, { status: 201 });
+      });
+
+      const shop = makeShop(fetchMock as unknown as typeof fetch);
+      await shop.shippingProfiles.upgrades.create(1, 2, {
+        type: 0,
+        upgrade_name: "Fast Shipping",
+        price: 5,
+        secondary_price: 2,
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it("getAll() GETs the nested upgrades path", async () => {
       const fetchMock = vi.fn(async (url: string | URL) => {
         expect(new URL(url).pathname).toBe("/v3/application/shops/1/shipping-profiles/2/upgrades");
@@ -258,10 +371,82 @@ describe("ShopResource.shippingProfiles", () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+
+    it("delete() DELETEs the fully-nested upgrade path", async () => {
+      const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+        expect(init?.method).toBe("DELETE");
+        expect(new URL(url).pathname).toBe(
+          "/v3/application/shops/1/shipping-profiles/2/upgrades/3",
+        );
+        return new Response(null, { status: 204 });
+      });
+
+      const shop = makeShop(fetchMock as unknown as typeof fetch);
+      const result = await shop.shippingProfiles.upgrades.delete(1, 2, 3);
+
+      expect(result).toBeUndefined();
+    });
   });
 });
 
 describe("ShopResource.returnPolicies", () => {
+  it("create() POSTs a form body to the return-policies collection", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("POST");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/policies/return");
+      const body = init?.body as URLSearchParams;
+      expect(body.get("accepts_returns")).toBe("true");
+      expect(body.get("accepts_exchanges")).toBe("true");
+      return jsonResponse({ return_policy_id: 1 }, { status: 201 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.returnPolicies.create(1, { accepts_returns: true, accepts_exchanges: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() GETs a single return policy with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/policies/return/2");
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      return jsonResponse({ return_policy_id: 2 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.returnPolicies.get(1, 2);
+
+    expect(result).toEqual({ return_policy_id: 2 });
+  });
+
+  it("update() PUTs a form body to a single return policy", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/policies/return/2");
+      expect((init?.body as URLSearchParams).get("accepts_returns")).toBe("false");
+      return jsonResponse({ return_policy_id: 2, accepts_returns: false });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.returnPolicies.update(1, 2, { accepts_returns: false, accepts_exchanges: false });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() DELETEs a single return policy and returns undefined for 204", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("DELETE");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/policies/return/2");
+      return new Response(null, { status: 204 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.returnPolicies.delete(1, 2);
+
+    expect(result).toBeUndefined();
+  });
+
   it("consolidate() POSTs source/destination ids to the consolidate path", async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(init?.method).toBe("POST");
@@ -328,6 +513,57 @@ describe("ShopResource.processingProfiles", () => {
     await shop.processingProfiles.getAll(1, { limit: 25 });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getAll() omits the query key entirely when no params are passed", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).search).toBe("");
+      return jsonResponse({ count: 0, results: [] });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.processingProfiles.getAll(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() GETs a single readiness-state-definition", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/readiness-state-definitions/2");
+      return jsonResponse({ readiness_state_definition_id: 2 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.processingProfiles.get(1, 2);
+
+    expect(result).toEqual({ readiness_state_definition_id: 2 });
+  });
+
+  it("update() PUTs a form body to a single readiness-state-definition", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/readiness-state-definitions/2");
+      expect((init?.body as URLSearchParams).get("readiness_state")).toBe("made_to_order");
+      return jsonResponse({ readiness_state_definition_id: 2, readiness_state: "made_to_order" });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    await shop.processingProfiles.update(1, 2, { readiness_state: "made_to_order" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() DELETEs a single readiness-state-definition and returns undefined for 204", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(init?.method).toBe("DELETE");
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/readiness-state-definitions/2");
+      return new Response(null, { status: 204 });
+    });
+
+    const shop = makeShop(fetchMock as unknown as typeof fetch);
+    const result = await shop.processingProfiles.delete(1, 2);
+
+    expect(result).toBeUndefined();
   });
 });
 

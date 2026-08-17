@@ -92,6 +92,10 @@ npm run format:check       # Prettier check
 npm run typecheck           # tsc --noEmit
 ```
 
+`npm run test:coverage` enforces the coverage gate in `vitest.config.ts`
+(≥90% statements/branches/functions/lines on `src/`, 100% on `src/http/**`
+and `src/auth/**`) and fails the build below it, same as CI.
+
 `src/generated/**` (schema and per-operation request/response types) is
 generated from `docs/<version>.json` — see `docs/ARCHITECTURE.md`. To pick up
 a new Etsy spec version, drop the new `docs/<X.Y.Z>.json` file in place and
