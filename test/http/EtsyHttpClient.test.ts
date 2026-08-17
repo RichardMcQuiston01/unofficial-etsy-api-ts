@@ -158,6 +158,56 @@ describe("EtsyHttpClient — happy path", () => {
       remainingThisSecond: 9,
     });
   });
+
+  it("tracks a partial snapshot when only some rate-limit headers are present, ignoring malformed values", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        { ping: "pong" },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-limit-per-day": "not-a-number",
+            "x-remaining-today": "9999",
+          },
+        },
+      ),
+    );
+    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+
+    expect(client.getLastRateLimit()).toEqual({ remainingToday: 9999 });
+  });
+
+  it("tracks a partial snapshot when only the per-second headers are present", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        { ping: "pong" },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-limit-per-second": "10",
+            "x-remaining-this-second": "1",
+          },
+        },
+      ),
+    );
+    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+
+    expect(client.getLastRateLimit()).toEqual({ limitPerSecond: 10, remainingThisSecond: 1 });
+  });
 });
 
 describe("EtsyHttpClient — request bodies", () => {
@@ -223,6 +273,7 @@ describe("EtsyHttpClient — request bodies", () => {
       expect(image.size).toBe(blob.size);
       expect(image.type).toBe(blob.type);
       expect(body.get("rank")).toBe("1");
+      expect(body.has("alt_text")).toBe(false);
       return jsonResponse({ listing_image_id: 1 }, { status: 201 });
     });
     const client = new EtsyHttpClient({
@@ -235,7 +286,7 @@ describe("EtsyHttpClient — request bodies", () => {
       method: "POST",
       path: "/v3/application/shops/{shop_id}/listings/{listing_id}/images",
       pathParams: { shop_id: 1, listing_id: 2 },
-      body: { kind: "multipart", data: { image: blob, rank: 1 } },
+      body: { kind: "multipart", data: { image: blob, rank: 1, alt_text: undefined } },
       auth: "oauth",
       operationId: "uploadListingImage",
     });
@@ -265,6 +316,40 @@ describe("EtsyHttpClient — errors", () => {
       status: 404,
       etsyError: "Listing not found",
       operationId: "getListing",
+    });
+  });
+
+  it("attaches the rate-limit snapshot to EtsyApiError when the error response carries rate-limit headers", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "Internal error" }), {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "x-limit-per-day": "5000",
+            "x-remaining-today": "10",
+            "x-limit-per-second": "10",
+            "x-remaining-this-second": "1",
+          },
+        }),
+    );
+    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+
+    const error = await client
+      .request({
+        method: "GET",
+        path: "/v3/application/openapi-ping",
+        auth: "apiKey",
+        operationId: "ping",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(EtsyApiError);
+    expect((error as EtsyApiError).rateLimit).toEqual({
+      limitPerDay: 5000,
+      remainingToday: 10,
+      limitPerSecond: 10,
+      remainingThisSecond: 1,
     });
   });
 
@@ -306,6 +391,47 @@ describe("EtsyHttpClient — errors", () => {
     expect((error as EtsyApiError).status).toBe(502);
     expect(typeof (error as EtsyApiError).etsyError).toBe("string");
     expect((error as EtsyApiError).etsyError.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to statusText when the error body is valid JSON without an `error` string field", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ message: "nope" }), {
+          status: 400,
+          statusText: "Bad Request",
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+
+    const error = await client
+      .request({
+        method: "GET",
+        path: "/v3/application/openapi-ping",
+        auth: "apiKey",
+        operationId: "ping",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(EtsyApiError);
+    expect((error as EtsyApiError).etsyError).toBe("Bad Request");
+  });
+
+  it("falls back to 'HTTP <status>' when statusText is also empty", async () => {
+    const fetchMock = vi.fn(async () => new Response("", { status: 418, statusText: "" }));
+    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+
+    const error = await client
+      .request({
+        method: "GET",
+        path: "/v3/application/openapi-ping",
+        auth: "apiKey",
+        operationId: "ping",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(EtsyApiError);
+    expect((error as EtsyApiError).etsyError).toBe("HTTP 418");
   });
 
   it("rejects a non-scalar array element in a form body", async () => {
@@ -365,6 +491,35 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     const client = new EtsyHttpClient({
       apiKey: "test-key",
       fetch: fetchMock,
+    });
+
+    const result = await client.request<{ ping: string }>({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+
+    expect(result.ping).toBe("pong");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to exponential backoff when Retry-After is present but not a valid number", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async () => {
+      call += 1;
+      if (call === 1) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "not-a-number" },
+        });
+      }
+      return jsonResponse({ ping: "pong" });
+    });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock,
+      retry: { maxBackoffMs: 5 },
     });
 
     const result = await client.request<{ ping: string }>({
@@ -477,6 +632,74 @@ describe("EtsyHttpClient — cancellation", () => {
     await expect(promise).rejects.toThrow(/aborted/i);
   });
 
+  it("immediately aborts the underlying fetch when the caller-provided signal is already aborted", async () => {
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          if (init?.signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    const promise = client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+      signal: controller.signal,
+    });
+
+    await expect(promise).rejects.toThrow(/aborted/i);
+  });
+
+  it("immediately aborts when the per-attempt timeout signal is already aborted at combine time", async () => {
+    const alreadyAbortedTimeout = new AbortController();
+    alreadyAbortedTimeout.abort(new DOMException("Aborted", "TimeoutError"));
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValueOnce(alreadyAbortedTimeout.signal);
+
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          if (init?.signal?.aborted) {
+            reject(new DOMException("Aborted", "TimeoutError"));
+            return;
+          }
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "TimeoutError"));
+          });
+        }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    const controller = new AbortController();
+
+    const promise = client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+      signal: controller.signal,
+    });
+
+    await expect(promise).rejects.toThrow(/aborted/i);
+    timeoutSpy.mockRestore();
+  });
+
   it("aborts a request that exceeds the configured timeout", async () => {
     const fetchMock = vi.fn(
       (_url: string | URL, init?: RequestInit) =>
@@ -500,5 +723,49 @@ describe("EtsyHttpClient — cancellation", () => {
     });
 
     await expect(promise).rejects.toThrow();
+  });
+
+  it("aborts via the timeout when a non-aborting caller signal is also present", async () => {
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "TimeoutError"));
+          });
+        }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      fetch: fetchMock as unknown as typeof fetch,
+      timeoutMs: 10,
+    });
+    // Never aborted — exercises the "combine with a caller signal, then the
+    // *timeout* signal fires" path, distinct from the caller-aborts test above.
+    const controller = new AbortController();
+
+    const promise = client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+      signal: controller.signal,
+    });
+
+    await expect(promise).rejects.toThrow();
+  });
+});
+
+describe("EtsyHttpClient — constructor", () => {
+  it("throws when no fetch is injected and no global fetch is available", () => {
+    const originalFetch = globalThis.fetch;
+    // @ts-expect-error - simulating an environment without a global fetch.
+    delete globalThis.fetch;
+    try {
+      expect(() => new EtsyHttpClient({ apiKey: "test-key" })).toThrow(
+        /requires a fetch implementation/,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

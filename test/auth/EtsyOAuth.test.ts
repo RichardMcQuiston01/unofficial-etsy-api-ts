@@ -114,6 +114,28 @@ describe("EtsyOAuth token exchange and refresh", () => {
     expect(await tokenStore.load()).toEqual(tokens);
   });
 
+  it("splits the response's own `scope` string instead of falling back to the requested scopes, when present", async () => {
+    const tokenStore = new InMemoryTokenStore();
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            access_token: "access-1",
+            refresh_token: "refresh-1",
+            token_type: "Bearer",
+            expires_in: 3600,
+            scope: "listings_r email_r",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    const oauth = makeOAuth(tokenStore, fetchMock);
+
+    const tokens = await oauth.exchangeCode("auth-code-123", "verifier-abc");
+
+    expect(tokens.scope).toEqual(["listings_r", "email_r"]);
+  });
+
   it("getValidAccessToken returns the cached token when far from expiry", async () => {
     const tokenStore: TokenStore = new InMemoryTokenStore();
     const fresh: TokenSet = {
@@ -217,5 +239,48 @@ describe("EtsyOAuth token exchange and refresh", () => {
     await expect(oauth.exchangeCode("bad-code", "verifier")).rejects.toThrow(
       /token request failed \(400\).*invalid_grant/is,
     );
+  });
+});
+
+describe("EtsyOAuth — constructor and environment requirements", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("defaults to an InMemoryTokenStore when tokenStore is omitted from config", async () => {
+    const oauth = new EtsyOAuth({
+      clientId: "test-client-id",
+      redirectUri: "https://example.com/callback",
+      scopes: ["listings_r"],
+      fetch: vi.fn(),
+    });
+
+    await expect(oauth.getValidAccessToken()).rejects.toThrow(/no tokens available/i);
+  });
+
+  it("throws when no fetch is injected and no global fetch is available", () => {
+    const originalFetch = globalThis.fetch;
+    // @ts-expect-error - simulating an environment without a global fetch.
+    delete globalThis.fetch;
+    try {
+      expect(() => makeOAuth()).toThrow(/requires a fetch implementation/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("createAuthorizationUrl throws when the Web Crypto API is unavailable", async () => {
+    const originalCrypto = globalThis.crypto;
+    vi.stubGlobal("crypto", {
+      getRandomValues: originalCrypto.getRandomValues.bind(originalCrypto),
+    });
+    try {
+      const oauth = makeOAuth();
+      await expect(oauth.createAuthorizationUrl("state")).rejects.toThrow(
+        /requires the Web Crypto API/,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
