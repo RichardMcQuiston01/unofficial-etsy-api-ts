@@ -54,7 +54,7 @@ function withQuery<T extends Record<string, unknown> | undefined>(
   return { query };
 }
 
-class ListingInventoryResource {
+export class ListingInventoryResource {
   #http: EtsyHttpClient;
   constructor(http: EtsyHttpClient) {
     this.#http = http;
@@ -106,7 +106,7 @@ class ListingInventoryResource {
   }
 }
 
-class SellerTaxonomyResource {
+export class SellerTaxonomyResource {
   #http: EtsyHttpClient;
   constructor(http: EtsyHttpClient) {
     this.#http = http;
@@ -134,7 +134,7 @@ class SellerTaxonomyResource {
   }
 }
 
-class BuyerTaxonomyResource {
+export class BuyerTaxonomyResource {
   #http: EtsyHttpClient;
   constructor(http: EtsyHttpClient) {
     this.#http = http;
@@ -162,7 +162,7 @@ class BuyerTaxonomyResource {
   }
 }
 
-class ReviewsResource {
+export class ReviewsResource {
   #http: EtsyHttpClient;
   constructor(http: EtsyHttpClient) {
     this.#http = http;

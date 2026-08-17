@@ -59,5 +59,8 @@ Thumbs.db
 # ---- npm pack/publish artifacts ----
 *.tgz
 
+# ---- Generated API docs (npm run docs:api) ----
+docs/api/
+
 # ---- Local agent tooling (Claude Code worktrees, session state) ----
 .claude/

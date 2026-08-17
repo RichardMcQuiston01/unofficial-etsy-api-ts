@@ -25,7 +25,12 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 
 ### Installation
 
-_Not yet published. Installation instructions land when `0.1.0` ships._
+```sh
+npm install @richardmcquiston01/etsy-api
+```
+
+(Not yet published to npm — see the status note above. This is the command
+once `0.1.0` ships.)
 
 ### Adding to Project
 
@@ -80,6 +85,29 @@ const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>", auth });
 const receipts = await etsy.commerce.receipts.getAll(12345);
 ```
 
+### Guides & API reference
+
+Per-cluster usage guides, with runnable-shaped examples for the common
+flows in each:
+
+- [Listings & media](./docs/guides/listings.md) — CRUD, file/image/video
+  uploads, variations, translations, personalization.
+- [Catalog & inventory](./docs/guides/catalog.md) — taxonomy, per-listing
+  inventory/products/offerings, reviews.
+- [Shop setup](./docs/guides/shop.md) — sections, shipping profiles
+  (destinations/upgrades), return policies, processing profiles, holiday
+  preferences, production partners.
+- [Orders, transactions, payments & ledger](./docs/guides/commerce.md) —
+  receipts, transactions, payments, ledger entries, the authenticated
+  user.
+
+The full generated API reference (every exported class/type, from
+TypeDoc) is published at
+[richardmcquiston01.github.io/unofficial-etsy-api-ts](https://richardmcquiston01.github.io/unofficial-etsy-api-ts/)
+once `.github/workflows/docs.yml` has run — see its note in the
+Development section below if that link isn't live yet. Generate it locally
+with `npm run docs:api` (writes to `docs/api/`, gitignored).
+
 ## Development
 
 Contributor setup for working on this package itself:
@@ -93,6 +121,7 @@ npm run test:coverage    # unit tests with coverage
 npm run lint              # ESLint
 npm run format:check       # Prettier check
 npm run typecheck           # tsc --noEmit
+npm run docs:api             # generate the TypeDoc API reference into docs/api/
 ```
 
 `npm run test:coverage` enforces the coverage gate in `vitest.config.ts`
@@ -103,6 +132,11 @@ and `src/auth/**`) and fails the build below it, same as CI.
 generated from `docs/<version>.json` — see `docs/ARCHITECTURE.md`. To pick up
 a new Etsy spec version, drop the new `docs/<X.Y.Z>.json` file in place and
 rerun `npm run codegen`; it always uses the highest-semver spec file present.
+
+`.github/workflows/docs.yml` builds the TypeDoc reference and deploys it to
+GitHub Pages on every push to `main`. This requires GitHub Pages to be
+enabled once (Settings → Pages → Source: "GitHub Actions") — a one-time
+repo-admin action, like `NPM_TOKEN` below.
 
 ### Releasing
 

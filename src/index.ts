@@ -28,7 +28,28 @@ export {
   ListingVideosResource,
 } from "./resources/listings/index.js";
 
+/**
+ * Etsy's `format: binary` upload fields (`file`/`image`/`video`) are typed
+ * as `string` by the generated OpenAPI types — the real wire value is a
+ * `Blob`, which `EtsyHttpClient`'s multipart builder passes through
+ * untouched. These three body types are exported (unlike the rest of
+ * `src/generated/operations.ts`, which stays internal) so a consumer can
+ * write `{ image: blob, ... } as unknown as UploadListingImageRequestBody`
+ * at the call site — see docs/guides/listings.md.
+ */
+export type {
+  UploadListingFileRequestBody,
+  UploadListingImageRequestBody,
+  UploadListingVideoRequestBody,
+} from "./generated/operations.js";
+
 export { CatalogResource } from "./resources/catalog/index.js";
+export {
+  ListingInventoryResource,
+  SellerTaxonomyResource,
+  BuyerTaxonomyResource,
+  ReviewsResource,
+} from "./resources/catalog/index.js";
 
 export { ShopResource } from "./resources/shop/index.js";
 export {
