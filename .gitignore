@@ -55,3 +55,6 @@ Thumbs.db
 # ---- Misc ----
 *.local
 .cache/
+
+# ---- Local agent tooling (Claude Code worktrees, session state) ----
+.claude/
