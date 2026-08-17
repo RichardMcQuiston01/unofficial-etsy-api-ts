@@ -5,10 +5,11 @@
 Framework agnostic TypeScript NPM package for interacting with Etsy's API service.
 
 > **Status**: pre-release, under active development. There is no published
-> version yet and the client API is not usable. See [ROADMAP.md](./ROADMAP.md)
-> for the build plan and [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for
-> the locked API contract. Installation/usage docs below will be filled in
-> once the client ships.
+> version yet. See [ROADMAP.md](./ROADMAP.md) for the build plan and
+> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the locked API
+> contract. The client facade and all four resource clusters (listings,
+> catalog, shop, commerce) are implemented; install/publish instructions
+> below will be filled in once `0.1.0` ships to npm.
 
 ## Getting Started
 
@@ -25,11 +26,56 @@ _Not yet published. Installation instructions land when `0.1.0` ships._
 
 ### Adding to Project
 
-_Coming once the client facade (`createEtsyClient`) is implemented._
+```ts
+import { createEtsyClient } from "@richardmcquiston01/etsy-api";
+
+const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>" });
+```
+
+`createEtsyClient` returns an `EtsyClient` with one `listings`/`catalog`/
+`shop`/`commerce` resource cluster each, all sharing a single
+`EtsyHttpClient` transport. Resource classes are also individually
+exported for consumers who want to construct a narrower client by hand.
 
 ### Examples
 
-_Coming once the client facade (`createEtsyClient`) is implemented._
+**API-key-only** (the 32 public operations — taxonomy, listing search,
+shop lookups, etc. — need no OAuth):
+
+```ts
+import { createEtsyClient } from "@richardmcquiston01/etsy-api";
+
+const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>" });
+
+const { results: listings } = await etsy.listings.findAllActive({ keywords: "wall art" });
+const shop = await etsy.shop.get(12345);
+```
+
+**OAuth2 + PKCE** (required for the other 73 operations — creating/updating
+listings, reading receipts and payments, etc.):
+
+```ts
+import { createEtsyClient, EtsyOAuth } from "@richardmcquiston01/etsy-api";
+
+const auth = new EtsyOAuth({
+  clientId: "<your Etsy keystring>",
+  redirectUri: "https://example.com/oauth/callback",
+  scopes: ["listings_r", "listings_w", "shops_r"],
+});
+
+// 1. Send the user to Etsy to authorize; persist `pkce.codeVerifier` for
+//    the callback (e.g. in a session).
+const { url, pkce } = await auth.createAuthorizationUrl("<random state>");
+
+// 2. On the OAuth callback, exchange the returned `code` for tokens.
+await auth.exchangeCode("<code from callback query string>", pkce.codeVerifier);
+
+// 3. Build the client — EtsyHttpClient calls auth.getValidAccessToken()
+//    (refreshing transparently) for every operation that needs a scope.
+const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>", auth });
+
+const receipts = await etsy.commerce.receipts.getAll(12345);
+```
 
 ## Development
 
