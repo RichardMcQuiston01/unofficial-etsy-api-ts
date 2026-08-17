@@ -297,6 +297,37 @@ constructing a client. Resource classes are also individually exported
 from `src/index.ts` for consumers who want to construct a narrower client
 by hand, but `createEtsyClient` is the documented, default path.
 
+## Release process (Stage 7)
+
+Versioning and publishing use [Changesets](https://github.com/changesets/changesets)
+(`.changeset/config.json`: `baseBranch: "dev"`, `access: "public"`). A
+contributor records a changeset (`npm run changeset`) alongside a PR when the
+change is user-facing; `npm run version-packages` (run manually, ahead of a
+release) consumes pending changesets to bump `package.json` and append to
+`CHANGELOG.md`.
+
+Publishing is a separate, explicit step from merging to `dev`/`main`:
+`.github/workflows/release.yml` triggers only on a `vX.Y.Z` tag push, re-runs
+the full CI toolchain as a safety gate, verifies the tag matches
+`package.json`'s version, then runs `npm publish --provenance --access public`
+(provenance requires the workflow's `id-token: write` permission and npm's
+trusted-publishing OIDC flow) using an `NPM_TOKEN` repo secret. No workflow
+publishes automatically on a branch push — a release is always a deliberate
+tag push by a maintainer.
+
+`package.json`'s `publishConfig` (`access: "public"`, `provenance: true`)
+means a manual `npm publish` from a maintainer's machine defaults to the same
+flags, so the tag-push workflow and a manual publish can't accidentally
+diverge in visibility/provenance.
+
+Verified before this was considered done (Stage 7 exit criteria): `npm pack
+--dry-run` produces exactly `LICENSE`, `README.md`, `package.json`, and
+`dist/**` (9 files, ~158KB packed / ~1.5MB unpacked — the `.d.ts`/`.d.cts`
+size is dominated by the full generated operation/schema type surface, which
+is expected for an OpenAPI-derived SDK); a packed tarball installs cleanly
+into three scratch consumer projects and resolves correctly via `import`
+(ESM), `require` (CJS), and TypeScript's `NodeNext` module resolution.
+
 ## Sign-off gate
 
 Every Stage 4 resource-cluster PR is reviewed against this document before

@@ -38,6 +38,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -50,9 +54,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run build && changeset publish",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^4.1.10",

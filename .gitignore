@@ -56,5 +56,8 @@ Thumbs.db
 *.local
 .cache/
 
+# ---- npm pack/publish artifacts ----
+*.tgz
+
 # ---- Local agent tooling (Claude Code worktrees, session state) ----
 .claude/

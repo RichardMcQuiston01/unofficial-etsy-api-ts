@@ -101,6 +101,23 @@ generated from `docs/<version>.json` — see `docs/ARCHITECTURE.md`. To pick up
 a new Etsy spec version, drop the new `docs/<X.Y.Z>.json` file in place and
 rerun `npm run codegen`; it always uses the highest-semver spec file present.
 
+### Releasing
+
+Versioning and publishing go through [Changesets](https://github.com/changesets/changesets):
+
+```sh
+npm run changeset          # record a change: bump type (patch/minor/major) + summary
+npm run version-packages   # apply pending changesets: bump package.json, update CHANGELOG.md
+npm run release            # build + `changeset publish` (normally only run by CI)
+```
+
+To cut a release: merge the version bump from `npm run version-packages`,
+then push a `vX.Y.Z` tag matching `package.json`'s version. `.github/workflows/release.yml`
+runs the full toolchain (format/lint/typecheck/test:coverage/build) as a
+safety gate, verifies the tag matches `package.json`, then runs
+`npm publish --provenance --access public` using the repo's `NPM_TOKEN`
+secret. Nothing publishes on a push to `dev`/`main` — only on a tag push.
+
 ## Buy Me a Coffee
 
 I developed this while I currently looking for work. If this app has helped you or someone you know, please consider donating. I appreciate it.
