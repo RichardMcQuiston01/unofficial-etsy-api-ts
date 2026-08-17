@@ -62,6 +62,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     independently-computed (Node `crypto`, a different implementation
     path than the Web Crypto API under test) known vectors. 97%+
     statement / 100% function coverage on the new code.
+- `src/resources/catalog/index.ts`: `CatalogResource` (Stage 4 resource
+  cluster — Inventory & Catalog), covering all 11 `ShopListing
+Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
+  `Review` operations, grouped as `catalog.inventory`,
+  `catalog.sellerTaxonomy`, `catalog.buyerTaxonomy`, `catalog.reviews`,
+  plus `catalog.getProduct()`/`getOffering()` for the two single-operation
+  tags. Every method routes through `EtsyHttpClient`, using the exact
+  generated `<OperationId>Params`/`RequestBody`/`Response` types per
+  `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
+  `test/resources/catalog/catalog.test.ts` cover all 11 operations.
 
 ### Changed
 
