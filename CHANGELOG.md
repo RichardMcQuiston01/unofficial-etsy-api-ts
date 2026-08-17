@@ -134,6 +134,19 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   previously-untested resource method across all four Stage 4 clusters
   (`commerce`, `shop`, `listings` — `catalog` was already fully covered).
   `src/`, `src/http`, and `src/auth` all now sit at 100% on every metric.
+- Stage 7 (Packaging & release engineering): [Changesets](https://github.com/changesets/changesets)
+  (`.changeset/config.json`, `npm run changeset`/`version-packages`/`release`
+  scripts) for versioning and `CHANGELOG.md` generation going forward, plus
+  `.github/workflows/release.yml` — a `vX.Y.Z`-tag-triggered workflow that
+  re-runs the full CI toolchain, verifies the tag matches `package.json`,
+  then `npm publish --provenance --access public`s using an `NPM_TOKEN`
+  repo secret. `package.json` gained a matching `publishConfig` (`access:
+"public"`, `provenance: true`) so a manual publish can't diverge from the
+  automated one. Verified `npm pack --dry-run`'s file list (exactly
+  `LICENSE`/`README.md`/`package.json`/`dist/**`) and that a packed tarball
+  installs and resolves correctly via `import`, `require`, and TypeScript's
+  `NodeNext` resolution in three scratch consumer projects — see
+  `docs/ARCHITECTURE.md`'s new Release process section.
 
 ### Changed
 
