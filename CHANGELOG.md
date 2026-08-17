@@ -147,6 +147,17 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   installs and resolves correctly via `import`, `require`, and TypeScript's
   `NodeNext` resolution in three scratch consumer projects — see
   `docs/ARCHITECTURE.md`'s new Release process section.
+- Stage 8 (QA & security review): `docs/SECURITY-REVIEW.md`, the sign-off
+  audit against the full codebase — a code-level security review (no
+  hand-rolled request/URL construction, PKCE `code_verifier` uses a CSPRNG,
+  no secret ever appears in a thrown error or log, CI/release workflows
+  have no untrusted-input injection points), a dependency audit (zero
+  runtime dependencies; one dev-only, Windows-only, low-severity `esbuild`
+  advisory with no available non-breaking fix, accepted), and a license
+  audit (zero runtime dependencies to reconcile; no GPL/AGPL in
+  `devDependencies`). No unresolved high/critical findings. Also adds root
+  `SECURITY.md` (a standard vulnerability-reporting policy, pointing to
+  GitHub's private security-advisory flow).
 
 ### Changed
 
