@@ -108,6 +108,17 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   `<OperationId>Params`/`RequestBody`/`Response` types per
   `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
   `test/resources/listings/listings.test.ts`.
+- `src/client.ts`: `createEtsyClient()` and the `EtsyClient` facade —
+  constructs a single shared `EtsyHttpClient` and wires up `listings`,
+  `catalog`, `shop`, and `commerce`, plus the optional `auth` passed
+  through from `EtsyClientConfig`. The package's single public entry
+  point for constructing a client, per `docs/ARCHITECTURE.md`'s Facade
+  section. `src/index.ts` now also exports every resource class (and
+  their exported sub-resources), `EtsyOAuth`/`InMemoryTokenStore`,
+  `EtsyApiError`, and `paginate()`, for consumers who want to construct a
+  narrower client by hand. Tests in `test/client.test.ts`.
+- README: filled in "Adding to Project" and "Examples" with a
+  `createEtsyClient` quickstart, one API-key-only and one OAuth2/PKCE.
 
 ### Changed
 
