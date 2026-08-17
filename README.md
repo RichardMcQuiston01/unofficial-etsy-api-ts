@@ -9,7 +9,10 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 > [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the locked API
 > contract. The client facade and all four resource clusters (listings,
 > catalog, shop, commerce) are implemented; install/publish instructions
-> below will be filled in once `0.1.0` ships to npm.
+> below will be filled in once `0.1.0` ships to npm. See
+> [docs/SECURITY-REVIEW.md](./docs/SECURITY-REVIEW.md) for the Stage 8
+> QA/security audit, and [SECURITY.md](./SECURITY.md) to report a
+> vulnerability.
 
 ## Getting Started
 
