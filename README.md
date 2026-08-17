@@ -14,7 +14,7 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 
 ### Prerequisites
 
-- Node.js 18 or later (also targets browsers and edge runtimes such as
+- Node.js 20 or later (also targets browsers and edge runtimes such as
   Cloudflare Workers, Deno, and Bun — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)).
 - An Etsy app keystring/API key, obtained from the
   [Etsy Developers portal](https://www.etsy.com/developers/your-apps).

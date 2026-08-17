@@ -97,6 +97,17 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   `<OperationId>Params`/`RequestBody`/`Response` types per
   `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
   `test/resources/commerce/commerce.test.ts`.
+- `src/resources/listings/`: `ListingsResource` (Stage 4 resource cluster
+  — Listings & Media), covering all 37 `ShopListing` (+ File/Image/
+  Video/VariationImage/Translation/Personalization) operations, grouped
+  as `listings.files`, `listings.images`, `listings.videos`,
+  `listings.variationImages`, `listings.translations`,
+  `listings.personalization`, plus 17 top-level `ShopListing` tag
+  methods (`create`/`get`/`delete`/`update`/`getByShop`/etc.). Every
+  method routes through `EtsyHttpClient`, using the exact generated
+  `<OperationId>Params`/`RequestBody`/`Response` types per
+  `docs/ARCHITECTURE.md`'s resource module conventions. Smoke tests in
+  `test/resources/listings/listings.test.ts`.
 
 ### Changed
 
@@ -109,6 +120,17 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   amended during Stage 3 implementation, since deriving the PKCE S256
   `code_challenge` requires `SubtleCrypto.digest()`, which has no
   synchronous form.
+- **Raised minimum supported Node.js from 18+ to 20+** (`package.json`
+  `engines.node`, `docs/ARCHITECTURE.md`'s locked runtime-support
+  decision, `README.md`). Root cause: `vitest@4`/`eslint@10` (the dev
+  toolchain, not the shipped `dist/` code) require Node ≥20 to even
+  start — `vitest run` fails immediately on Node 18 with `SyntaxError:
+'node:util' does not provide an export named 'styleText'`. This meant
+  the CI matrix's Node 18.x leg had been failing on every PR since
+  Stage 1 without anyone noticing (local verification during Stages
+  1-4 ran on Node 22). Dropped the 18.x leg from
+  `.github/workflows/ci.yml`'s matrix (now `[20.x, 22.x]`) rather than
+  downgrading the toolchain.
 
 ### Fixed
 

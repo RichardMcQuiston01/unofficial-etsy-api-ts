@@ -36,8 +36,8 @@ describe("package.json", () => {
     expect(rootExport.types).toBe(packageJson.types);
   });
 
-  it("requires Node 18+, per docs/ARCHITECTURE.md's locked runtime support", () => {
-    expect(packageJson.engines.node).toBe(">=18");
+  it("requires Node 20+, per docs/ARCHITECTURE.md's locked runtime support", () => {
+    expect(packageJson.engines.node).toBe(">=20");
   });
 
   it("is valid semver starting at the 0.1.0 line", () => {
