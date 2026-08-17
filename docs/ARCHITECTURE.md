@@ -362,6 +362,14 @@ workaround (`{ file: blob, ... } as unknown as UploadListing*RequestBody`,
 per PR #11's original note) requires importing the type by name, which
 was impossible without this.
 
+Superseded during pre-release hardening: instead of exporting the raw
+generated types and requiring an `as unknown as` cast at the call site,
+each upload resource (`files.ts`/`images.ts`/`videos.ts`) now exports its
+own `UploadListing{File,Image,Video}Input` type — the generated
+`*RequestBody` type with its binary field corrected from `string | null`
+to `Blob | null` — and the three `upload()` methods take that type
+directly. No cast needed; see `docs/guides/listings.md`.
+
 ## Sign-off gate
 
 Every Stage 4 resource-cluster PR is reviewed against this document before

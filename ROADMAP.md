@@ -202,8 +202,9 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
   correctly for both `import` and `require` consumers (smoke-test in a
   throwaway consumer project).
 - **Exit criteria**: `npm publish --dry-run` produces the expected file
-  list; a tagged pre-release (`0.1.0-beta.0`) installs cleanly in a scratch
-  project via both ESM and CJS entry points.
+  list; installs cleanly in a scratch project via both ESM and CJS entry
+  points (verified via `npm pack` into throwaway consumer projects — no
+  beta tag was ever pushed; `0.1.0` publishes directly, see Stage 9).
 
 ### Stage 8 — QA & security review (QA/Security Reviewer, depends on Stage 4–7)
 
@@ -212,15 +213,16 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 - Manual check: no token/secret ever appears in thrown errors, logs, or
   serialized objects; PKCE verifier never logged.
 - **Exit criteria**: no unresolved high/critical findings; sign-off recorded
-  in the PR that promotes `0.1.0-beta.x` to `1.0.0`.
+  in `docs/SECURITY-REVIEW.md`, covering the `0.1.0` publish and again,
+  unchanged unless new findings surface, when `0.1.0` promotes to `1.0.0`.
 
 ### Stage 9 — Beta → GA
 
-- Publish `0.1.0` (or `0.x` line) to npm, dogfood against a real Etsy app
-  (sandbox keys), collect feedback for 1–2 weeks.
+- Publish `0.1.0` to npm, dogfood against a real Etsy app (sandbox keys),
+  collect feedback for 1–2 weeks.
 - Address feedback, then cut `1.0.0`.
-- **Exit criteria**: `1.0.0` published; README/CHANGELOG reflect it;
-  `CHANGELOG.md` (currently empty) has real entries from Changesets.
+- **Exit criteria**: `1.0.0` published; README/CHANGELOG reflect it —
+  `CHANGELOG.md` already has real entries from Changesets as of `0.1.0`.
 
 ---
 

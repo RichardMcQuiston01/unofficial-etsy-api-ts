@@ -2,11 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { EtsyHttpClient } from "../../../src/http/EtsyHttpClient.js";
 import type { EtsyOAuth } from "../../../src/auth/EtsyOAuth.js";
 import { ListingsResource } from "../../../src/resources/listings/index.js";
-import type {
-  UploadListingFileRequestBody,
-  UploadListingImageRequestBody,
-  UploadListingVideoRequestBody,
-} from "../../../src/generated/operations.js";
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -464,14 +459,10 @@ describe("ListingsResource.files — multipart upload", () => {
       fakeOAuth("test-token"),
     );
 
-    // openapi-typescript maps `format: binary` fields to `string`, but the
-    // real wire value is a Blob (EtsyHttpClient's multipart builder passes
-    // Blob instances through untouched) — cast at the call site the same
-    // way a real consumer would.
     const result = await resource.files.upload(1, 2, {
       file: blob,
       name: "pattern.pdf",
-    } as unknown as UploadListingFileRequestBody);
+    });
 
     expect(result).toEqual({ listing_file_id: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -582,7 +573,7 @@ describe("ListingsResource.images — no shop_id in the read path", () => {
 
     const result = await resource.images.upload(1, 2, {
       image: blob,
-    } as unknown as UploadListingImageRequestBody);
+    });
 
     expect(result).toEqual({ listing_image_id: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -633,7 +624,7 @@ describe("ListingsResource.videos", () => {
     const result = await resource.videos.upload(1, 2, {
       video: blob,
       name: "demo.mp4",
-    } as unknown as UploadListingVideoRequestBody);
+    });
 
     expect(result).toEqual({ video_id: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
