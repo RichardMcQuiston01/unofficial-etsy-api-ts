@@ -119,6 +119,21 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   narrower client by hand. Tests in `test/client.test.ts`.
 - README: filled in "Adding to Project" and "Examples" with a
   `createEtsyClient` quickstart, one API-key-only and one OAuth2/PKCE.
+- Stage 5 (Testing): a coverage gate, `vitest.config.ts`'s
+  `coverage.thresholds` — ≥90% (statements/branches/functions/lines)
+  globally on `src/`, 100% on `src/http/**` and `src/auth/**` — enforced
+  in CI via `npm run test:coverage` (already a required step on every
+  push/PR against `dev`/`main`). Closed every remaining coverage gap
+  first so the gate reflects a real bar rather than codifying the
+  existing shortfall: added targeted tests across `src/http`/`src/auth`
+  (missing-fetch/missing-Web-Crypto constructor guards, malformed/partial
+  rate-limit headers, malformed `Retry-After`, error-extraction edge
+  cases, `combineSignals()`'s already-aborted and
+  timeout-vs-caller-signal paths, `EtsyOAuth`'s response-scope-string and
+  default-`InMemoryTokenStore` branches) and smoke-tested every
+  previously-untested resource method across all four Stage 4 clusters
+  (`commerce`, `shop`, `listings` — `catalog` was already fully covered).
+  `src/`, `src/http`, and `src/auth` all now sit at 100% on every metric.
 
 ### Changed
 

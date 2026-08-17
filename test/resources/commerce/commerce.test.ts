@@ -85,6 +85,17 @@ describe("CommerceResource — receipts", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("get (getShopReceipt) reads a single receipt via GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/receipts/2");
+      return jsonResponse({ receipt_id: 2 });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    const result = await commerce.receipts.get(1, 2);
+    expect(result).toEqual({ receipt_id: 2 });
+  });
 });
 
 describe("CommerceResource — transactions", () => {
@@ -97,6 +108,39 @@ describe("CommerceResource — transactions", () => {
 
     const result = await commerce.transactions.getByReceipt(1, 2);
     expect(result.count).toBe(1);
+  });
+
+  it("get (getShopReceiptTransaction) reads a single transaction via GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/transactions/9");
+      return jsonResponse({ transaction_id: 9 });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    const result = await commerce.transactions.get(1, 9);
+    expect(result).toEqual({ transaction_id: 9 });
+  });
+
+  it("getByListing (getShopReceiptTransactionsByListing) issues an oauth GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/listings/2/transactions");
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    await commerce.transactions.getByListing(1, 2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByShop (getShopReceiptTransactionsByShop) issues an oauth GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/transactions");
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    await commerce.transactions.getByShop(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -111,6 +155,32 @@ describe("CommerceResource — payments", () => {
     const commerce = buildCommerce(fetchMock);
 
     await commerce.payments.getByShop(1, { payment_ids: [10, 20, 30] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getByReceipt (getShopPaymentByReceiptId) issues an oauth GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/shops/1/receipts/2/payments");
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    await commerce.payments.getByReceipt(1, 2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getLedgerEntryPayments (getPaymentAccountLedgerEntryPayments) requires ledger_entry_ids and comma-joins the array", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      const parsed = new URL(url);
+      expect(parsed.pathname).toBe(
+        "/v3/application/shops/1/payment-account/ledger-entries/payments",
+      );
+      expect(parsed.searchParams.get("ledger_entry_ids")).toBe("5,6");
+      return jsonResponse({ count: 0, results: [] });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    await commerce.payments.getLedgerEntryPayments(1, { ledger_entry_ids: [5, 6] });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -129,6 +199,19 @@ describe("CommerceResource — ledgerEntries", () => {
     await commerce.ledgerEntries.getAll(1, { min_created: 1000, max_created: 2000 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("get (getShopPaymentAccountLedgerEntry) reads a single ledger entry via GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe(
+        "/v3/application/shops/1/payment-account/ledger-entries/7",
+      );
+      return jsonResponse({ ledger_entry_id: 7 });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    const result = await commerce.ledgerEntries.get(1, 7);
+    expect(result).toEqual({ ledger_entry_id: 7 });
+  });
 });
 
 describe("CommerceResource — user & addresses", () => {
@@ -145,6 +228,17 @@ describe("CommerceResource — user & addresses", () => {
     expect(result).toEqual({ user_id: 42 });
   });
 
+  it("user.get() reads a single user via GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/users/42");
+      return jsonResponse({ user_id: 42 });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    const result = await commerce.user.get(42);
+    expect(result).toEqual({ user_id: 42 });
+  });
+
   it("user.addresses.getAll() lists addresses with no shop/user path segment", async () => {
     const fetchMock = vi.fn(async (url: string | URL) => {
       expect(new URL(url).pathname).toBe("/v3/application/user/addresses");
@@ -154,6 +248,17 @@ describe("CommerceResource — user & addresses", () => {
 
     await commerce.user.addresses.getAll();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("user.addresses.get() reads a single address via GET", async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      expect(new URL(url).pathname).toBe("/v3/application/user/addresses/5");
+      return jsonResponse({ user_address_id: 5 });
+    });
+    const commerce = buildCommerce(fetchMock);
+
+    const result = await commerce.user.addresses.get(5);
+    expect(result).toEqual({ user_address_id: 5 });
   });
 
   it("user.addresses.delete() sends DELETE and returns undefined for 204", async () => {
