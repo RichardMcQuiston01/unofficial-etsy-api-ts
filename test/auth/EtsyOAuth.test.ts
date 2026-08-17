@@ -240,6 +240,42 @@ describe("EtsyOAuth token exchange and refresh", () => {
       /token request failed \(400\).*invalid_grant/is,
     );
   });
+
+  it("truncates an oversized error body from the token endpoint response", async () => {
+    const longBody = "x".repeat(600);
+    const fetchMock = vi.fn(async () => new Response(longBody, { status: 400 }));
+    const oauth = makeOAuth(new InMemoryTokenStore(), fetchMock);
+
+    const error = await oauth
+      .exchangeCode("bad-code", "verifier")
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    const message = (error as Error).message;
+    expect(message).toContain(`${"x".repeat(500)}...`);
+    expect(message).not.toContain("x".repeat(501));
+  });
+
+  it("aborts a token request that exceeds a custom timeoutMs", async () => {
+    const fetchMock = vi.fn(
+      (_url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "TimeoutError"));
+          });
+        }),
+    );
+    const oauth = new EtsyOAuth({
+      clientId: "test-client-id",
+      redirectUri: "https://example.com/callback",
+      scopes: ["listings_r"],
+      fetch: fetchMock as unknown as typeof fetch,
+      timeoutMs: 10,
+    });
+
+    await expect(oauth.exchangeCode("bad-code", "verifier")).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("EtsyOAuth — constructor and environment requirements", () => {

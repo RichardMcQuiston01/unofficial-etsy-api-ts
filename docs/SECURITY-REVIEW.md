@@ -4,7 +4,8 @@ Owner: **QA/Security Reviewer**. Per `ROADMAP.md` Stage 8, this records the
 QA/security sign-off against the full codebase (Stages 0–7: architecture
 contract, scaffolding, codegen, core transport/auth, all four Stage 4
 resource clusters, the client facade, the coverage gate, and packaging/
-release engineering) ahead of promoting `0.1.0-beta.x` to `1.0.0`.
+release engineering) ahead of publishing `0.1.0` — and again, unchanged
+unless new findings surface, when `0.1.0` promotes to `1.0.0` per Stage 9.
 
 ## 1. Code-level security review
 
@@ -54,7 +55,7 @@ this package's specific risk areas:
   that interpolates untrusted input (PR titles, branch names, issue bodies)
   into a `run:` block.
 
-**Result: no HIGH or MEDIUM confidence findings.** Every resource method
+**Result: no HIGH or MEDIUM severity findings.** Every resource method
 across all four Stage 4 clusters routes through `EtsyHttpClient.request()`
 with templated `pathParams` and generated types — no hand-rolled URL or
 request construction anywhere in `src/resources/**`.
@@ -106,8 +107,8 @@ No GPL/AGPL or other license incompatible with Apache-2.0.
 No unresolved HIGH or MEDIUM findings. The one LOW dependency advisory is
 dev-only, platform-scoped (Windows), has no available non-breaking fix, and
 does not affect the published package. **Stage 8 exit criteria met** —
-this review is the sign-off referenced when `0.1.0-beta.x` promotes to
-`1.0.0`.
+this review is the sign-off for publishing `0.1.0`, and again when `0.1.0`
+promotes to `1.0.0`.
 
 Also added during this stage: root `SECURITY.md`, a standard vulnerability-
 reporting policy (GitHub surfaces this in the repo's Security tab) —

@@ -16,10 +16,13 @@ apiKey-only utility operations (20 operations total). Everything except
 A receipt is Etsy's unit of "an order" — one purchase, which may bundle
 multiple listings' transactions.
 
+`auth` below is an `EtsyOAuth` instance — see the README's OAuth2 + PKCE
+quickstart for how to build one; every method in this cluster needs it.
+
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth /* required — see README */ });
+const etsy = createEtsyClient({ apiKey: "<keystring>", auth });
 
 const { results: receipts } = await etsy.commerce.receipts.getAll(shopId, {
   limit: 25,

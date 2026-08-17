@@ -42,9 +42,13 @@ export async function* paginate<T>(
     for (const item of page.results) {
       yield item;
     }
-    if (page.results.length < limit) {
+    offset += page.results.length;
+    // Short page is the normal termination signal. `offset >= page.count` is
+    // a defensive upper bound for a server/spec inconsistency where every
+    // page comes back full (results.length === limit) past the reported
+    // total — without it, that case would loop forever.
+    if (page.results.length < limit || (Number.isFinite(page.count) && offset >= page.count)) {
       return;
     }
-    offset += page.results.length;
   }
 }

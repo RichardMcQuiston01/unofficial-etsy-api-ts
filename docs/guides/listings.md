@@ -14,10 +14,13 @@ a mix of `apiKey`-only and `oauth` — see each method's doc comment in
 
 ## CRUD
 
+`auth` below is an `EtsyOAuth` instance — see the README's OAuth2 + PKCE
+quickstart for how to build one; this guide picks up from there.
+
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth /* EtsyOAuth, see README */ });
+const etsy = createEtsyClient({ apiKey: "<keystring>", auth });
 
 // Create a draft listing.
 const draft = await etsy.listings.create(shopId, {

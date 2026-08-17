@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `src/http/EtsyHttpClient.ts`: retry-backoff `sleep()` between 429 retries
+  is now abortable via the caller's `AbortSignal`, so cancelling mid-backoff
+  no longer waits out the full delay (up to `maxBackoffMs`, default 30s).
+- `src/http/EtsyHttpClient.ts`: `EtsyApiError`'s `rateLimit` now prefers the
+  failing response's own rate-limit snapshot over the persisted
+  cross-request one, which could otherwise be stale.
+- `src/http/EtsyHttpClient.ts`: `buildMultipartBody` now wraps
+  `ArrayBuffer`/typed-array (`Uint8Array`, `Buffer`, `DataView`) values in a
+  `Blob`, instead of only accepting pre-constructed `Blob` instances — fixes
+  multipart uploads for Node callers reading files with `fs.readFile`.
+- `src/http/pagination.ts`: `paginate()` now also stops once the running
+  offset reaches the endpoint's reported `count`, as a defensive upper
+  bound alongside the existing short-page check, for endpoints that keep
+  returning full pages past the reported total.
+- `src/auth/EtsyOAuth.ts`: the token endpoint (`exchangeCode`/`refresh`) now
+  has a per-request timeout (`EtsyOAuthConfig.timeoutMs`, default 30s,
+  matching `EtsyClientConfig.timeoutMs`) and truncates oversized error
+  response bodies before including them in the thrown error.
+- GitHub Actions workflows (`ci.yml`, `release.yml`, `docs.yml`): checkout
+  steps now set `persist-credentials: false`; `docs.yml`'s Pages
+  permissions are scoped to the `deploy` job instead of the whole workflow.
+- `.gitignore`: broadened the `.env*` pattern (with a `!.env.example`
+  exception) instead of listing specific env-file variants individually.
+- Stale documentation fixes: `ROADMAP.md`'s Node version note, `docs/guides/{listings,commerce}.md`'s
+  `auth` placeholder wording, `docs/ARCHITECTURE.md`'s `paginate()` doc
+  comment, and a README grammar fix.
+
+Reviewed and rejected as incorrect: an automated finding that
+`createReceiptShipment` should use form-encoding instead of JSON — the
+vendored OpenAPI spec (`docs/3.0.0.json`) confirms `application/json` is
+the correct encoding, matching the existing implementation.
+
 ## [0.1.0] - 2026-08-17
 
 ### Added

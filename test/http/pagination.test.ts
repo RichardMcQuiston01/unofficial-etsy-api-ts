@@ -64,13 +64,34 @@ describe("paginate", () => {
     const result = await collect(paginate(fetchPage, { limit: 5, offset: 5 }));
 
     expect(result).toEqual([5, 6, 7, 8, 9]);
-    // The first page (offset 5) is exactly `limit` items long, so paginate()
-    // can't yet tell it was the last page — it fetches once more and stops
-    // on the empty page that follows. Expected: a full-length page never
-    // shortcuts the "is this the end?" check.
+    // The first page (offset 5) is exactly `limit` items long, so the
+    // short-page check alone couldn't tell it was the last page — but the
+    // count-based upper bound (new offset 10 >= reported count 10) catches
+    // it without an extra empty-page fetch.
+    expect(calls).toEqual([{ limit: 5, offset: 5 }]);
+  });
+
+  it("stops once offset reaches the reported count, even if the server keeps returning full pages", async () => {
+    // A misbehaving server that always returns `limit` items regardless of
+    // how far past `count` the offset has advanced — without the count-based
+    // upper bound, this would loop forever.
+    const calls: PaginationParams[] = [];
+    const fetchPage = async (
+      params: Required<PaginationParams>,
+    ): Promise<PaginatedResult<number>> => {
+      calls.push(params);
+      return {
+        count: 10,
+        results: Array.from({ length: params.limit }, (_, i) => params.offset + i),
+      };
+    };
+
+    const result = await collect(paginate(fetchPage, { limit: 5 }));
+
+    expect(result).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(calls).toEqual([
+      { limit: 5, offset: 0 },
       { limit: 5, offset: 5 },
-      { limit: 5, offset: 10 },
     ]);
   });
 

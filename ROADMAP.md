@@ -4,7 +4,11 @@ A multi-agent, multi-stage plan for building and publishing a framework-agnostic
 TypeScript wrapper around **Etsy Open API v3**, from empty repo to a published,
 versioned NPM package.
 
-Status: **planning draft for review**. Nothing below has been executed yet.
+Status: **Stages 0–8 complete; `0.1.0` is prepared for release** (see
+`CHANGELOG.md` and `docs/SECURITY-REVIEW.md`). This document is kept as the
+original planning artifact — see the stage-by-stage history in
+`CHANGELOG.md`'s `[0.1.0]` entry and each stage's own PR for what actually
+shipped.
 
 ---
 
@@ -63,7 +67,7 @@ agents once the core is settled.
   set of `.d.ts` types (`tsup` or `tsc` project references — decided in
   Stage 1 spike).
 - **HTTP**: no hard dependency on `axios`/`node-fetch`; use platform `fetch`
-  (Node 18+, browsers, edge runtimes) to keep the package framework-agnostic,
+  (Node 20+, browsers, edge runtimes) to keep the package framework-agnostic,
   per the README's stated goal. Provide a `fetch` injection point for
   environments without a global `fetch`.
 - **Types**: generate the base request/response/schema types from
@@ -251,9 +255,10 @@ this is the main opportunity to compress wall-clock time beyond the naive
 
 ## 6. Decisions (resolved)
 
-1. **Node/browser support matrix** — Node.js 18+, browsers, and edge
-   runtimes (Workers/Deno/Bun). Core stays `fetch`-only with no Node
-   built-ins.
+1. **Node/browser support matrix** — Node.js 20+ (raised from the original
+   18+ during Stage 4 — see `docs/ARCHITECTURE.md`'s locked decisions),
+   browsers, and edge runtimes (Workers/Deno/Bun). Core stays `fetch`-only
+   with no Node built-ins.
 2. **Token persistence** — storage-agnostic: ship the `TokenStore`
    interface plus a trivial `InMemoryTokenStore` default only.
 3. **Versioning line** — start at `0.1.0`.
@@ -265,6 +270,7 @@ deliverable).
 
 ---
 
-_This document is a planning artifact. Stage 0 is complete — see
-`docs/ARCHITECTURE.md` for the locked module contract. Stage 1 (scaffolding)
-is next._
+_This document is a planning artifact. Stages 0–8 are complete — see
+`docs/ARCHITECTURE.md` for the locked module contract and `CHANGELOG.md`'s
+`[0.1.0]` entry for what each stage actually shipped. Stage 9 (Beta → GA)
+is next: publish `0.1.0`, dogfood, then cut `1.0.0`._

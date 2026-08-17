@@ -133,6 +133,13 @@ interface EtsyOAuthConfig {
    *  globalThis.fetch, so a consumer in a restricted environment could
    *  construct an EtsyHttpClient but not complete the OAuth flow. */
   fetch?: typeof fetch;
+  /** Per-request timeout in ms for the token endpoint (exchangeCode/refresh),
+   *  applied via AbortSignal.timeout(). Default 30_000, matching
+   *  EtsyClientConfig.timeoutMs. Added during pre-release hardening — without
+   *  it, a stalled token endpoint would hang getValidAccessToken() (and
+   *  everything awaiting the shared in-flight refresh) indefinitely,
+   *  regardless of the transport's own timeout. */
+  timeoutMs?: number;
 }
 
 declare class EtsyOAuth {
@@ -245,9 +252,11 @@ interface PaginatedResult<T> {
 
 /** Wraps any list endpoint into an async iterator over individual items,
  *  advancing offset by the page size until a short page is returned.
- *  Throws RangeError synchronously (on first iteration) for a non-positive
- *  limit or a negative offset — a limit <= 0 can never satisfy the
- *  short-page termination check, which would otherwise loop forever. */
+ *  Rejects with RangeError on the first iteration (the first `next()` or
+ *  `for await` step, since `paginate()` itself returns an async generator
+ *  without running any body yet) for a non-positive limit or a negative
+ *  offset — a limit <= 0 can never satisfy the short-page termination
+ *  check, which would otherwise loop forever. */
 declare function paginate<T>(
   fetchPage: (params: PaginationParams) => Promise<PaginatedResult<T>>,
   start?: PaginationParams,
