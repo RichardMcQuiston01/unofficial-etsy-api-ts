@@ -158,6 +158,29 @@ Inventory`/`Product`/`Offering`, `SellerTaxonomy`, `BuyerTaxonomy`, and
   `devDependencies`). No unresolved high/critical findings. Also adds root
   `SECURITY.md` (a standard vulnerability-reporting policy, pointing to
   GitHub's private security-advisory flow).
+- Stage 6 (Documentation): README's Installation section (the `npm install`
+  command) and a new "Guides & API reference" section; four per-cluster
+  usage guides (`docs/guides/{listings,catalog,shop,commerce}.md`) —
+  every code example in them is compiled against the real published
+  package (via a scratch consumer project, same technique as Stage 7's
+  exports-map verification) rather than freehand, which caught two real
+  API-shape bugs before they shipped (`updateListingInventory`'s
+  `readiness_state_id` and `updateListingPersonalization`'s `required`
+  field are both actually required, not optional; `updateListing` has no
+  `price` field — price lives on inventory offerings). TypeDoc
+  (`typedoc.json`, `npm run docs:api`) generates the full API reference
+  from `src/index.ts`'s public exports into `docs/api/` (gitignored);
+  `.github/workflows/docs.yml` deploys it to GitHub Pages on push to
+  `main` (requires Pages enabled once, a manual step like `NPM_TOKEN`).
+  Wiring up TypeDoc surfaced two real gaps in the public API surface,
+  both fixed: `CatalogResource`'s four sub-resource classes
+  (`ListingInventoryResource`, `SellerTaxonomyResource`,
+  `BuyerTaxonomyResource`, `ReviewsResource`) weren't exported, unlike
+  every other cluster's sub-resources — an inconsistency from Stage 4;
+  and `UploadListingFileRequestBody`/`UploadListingImageRequestBody`/
+  `UploadListingVideoRequestBody` weren't exported either, making the
+  documented binary-upload cast-at-call-site workaround (from PR #11)
+  impossible to actually write in a consumer's own code.
 
 ### Changed
 

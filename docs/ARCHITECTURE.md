@@ -328,6 +328,31 @@ is expected for an OpenAPI-derived SDK); a packed tarball installs cleanly
 into three scratch consumer projects and resolves correctly via `import`
 (ESM), `require` (CJS), and TypeScript's `NodeNext` module resolution.
 
+## Documentation (Stage 6)
+
+`README.md` covers Prerequisites/Installation/Adding to Project/Examples
+(quickstarts for both auth modes). `docs/guides/{listings,catalog,shop,commerce}.md`
+are per-cluster usage guides — every example in them is checked against the
+actual generated request/response types before being written, not
+freehand. `typedoc.json` generates the full API reference from
+`src/index.ts`'s public exports (`npm run docs:api`, output to `docs/api/`,
+gitignored — a build artifact, not committed); `.github/workflows/docs.yml`
+deploys it to GitHub Pages on push to `main` (requires Pages enabled once
+under repo settings, a manual step like `NPM_TOKEN`).
+
+While wiring up TypeDoc, it surfaced that `CatalogResource`'s four
+sub-resource classes (`ListingInventoryResource`, `SellerTaxonomyResource`,
+`BuyerTaxonomyResource`, `ReviewsResource`) weren't exported from
+`src/resources/catalog/index.ts` or re-exported from `src/index.ts`,
+unlike every other cluster's sub-resources — an inconsistency from Stage 4
+that TypeDoc's cross-reference warnings caught. Fixed to match the
+established pattern. Also exported `UploadListingFileRequestBody`/
+`UploadListingImageRequestBody`/`UploadListingVideoRequestBody` from
+`src/index.ts` (previously internal-only) — the documented binary-upload
+workaround (`{ file: blob, ... } as unknown as UploadListing*RequestBody`,
+per PR #11's original note) requires importing the type by name, which
+was impossible without this.
+
 ## Sign-off gate
 
 Every Stage 4 resource-cluster PR is reviewed against this document before

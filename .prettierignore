@@ -2,4 +2,5 @@ dist
 coverage
 node_modules
 docs/3.0.0.json
+docs/api
 src/generated
