@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { EtsyHttpClient } from "../../../src/http/EtsyHttpClient.js";
 import type { EtsyOAuth } from "../../../src/auth/EtsyOAuth.js";
 import { ListingsResource } from "../../../src/resources/listings/index.js";
-import type { UploadListingFileRequestBody } from "../../../src/generated/operations.js";
+import type {
+  UploadListingFileRequestBody,
+  UploadListingVideoRequestBody,
+} from "../../../src/generated/operations.js";
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -184,6 +187,129 @@ describe("ListingsResource.images — no shop_id in the read path", () => {
     const { resource } = makeResource(fetchMock as unknown as typeof fetch);
 
     await resource.images.getAll(5);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ListingsResource.videos", () => {
+  it("upload() sends a multipart/form-data body built from a Blob, with oauth auth", async () => {
+    const blob = new Blob(["fake-video-bytes"], { type: "video/mp4" });
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/videos",
+      );
+      expect(init?.method).toBe("POST");
+      expect(init?.body).toBeInstanceOf(FormData);
+      const body = init?.body as FormData;
+      const video = body.get("video") as Blob;
+      expect(video).toBeInstanceOf(Blob);
+      expect(video.size).toBe(blob.size);
+      expect(body.get("name")).toBe("demo.mp4");
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer test-token");
+      return jsonResponse({ video_id: 1 }, { status: 201 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.videos.upload(1, 2, {
+      video: blob,
+      name: "demo.mp4",
+    } as unknown as UploadListingVideoRequestBody);
+
+    expect(result).toEqual({ video_id: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() reads a single video via GET with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/listings/5/videos/9",
+      );
+      expect(init?.method).toBe("GET");
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      return jsonResponse({ video_id: 9 });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.videos.get(5, 9);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ListingsResource.variationImages", () => {
+  it("update() sends a JSON body with oauth auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/variation-images",
+      );
+      expect(init?.method).toBe("POST");
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Content-Type")).toBe("application/json");
+      expect(headers.get("Authorization")).toBe("Bearer test-token");
+      expect(init?.body).toBe(
+        JSON.stringify({ variation_images: [{ property_id: 1, value_id: 2, image_id: 3 }] }),
+      );
+      return jsonResponse({ variation_images: [] });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.variationImages.update(1, 2, {
+      variation_images: [{ property_id: 1, value_id: 2, image_id: 3 }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ListingsResource.translations", () => {
+  it("create() form-encodes the body with oauth auth and the {language} path param", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/translations/fr",
+      );
+      expect(init?.method).toBe("POST");
+      expect(init?.body).toBeInstanceOf(URLSearchParams);
+      const body = init?.body as URLSearchParams;
+      expect(body.get("title")).toBe("Une tasse");
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer test-token");
+      return jsonResponse({ title: "Une tasse", description: "Une belle tasse" });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    await resource.translations.create(1, 2, "fr", {
+      title: "Une tasse",
+      description: "Une belle tasse",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() reads via GET with apiKey auth", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(new URL(url).toString()).toBe(
+        "https://openapi.etsy.com/v3/application/shops/1/listings/2/translations/de",
+      );
+      expect(init?.method).toBe("GET");
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      return jsonResponse({ title: "Eine Tasse", description: "Eine schöne Tasse" });
+    });
+    const { resource } = makeResource(fetchMock as unknown as typeof fetch);
+
+    await resource.translations.get(1, 2, "de");
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
