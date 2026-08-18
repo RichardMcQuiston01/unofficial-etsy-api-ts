@@ -4,11 +4,13 @@ A multi-agent, multi-stage plan for building and publishing a framework-agnostic
 TypeScript wrapper around **Etsy Open API v3**, from empty repo to a published,
 versioned NPM package.
 
-Status: **Stages 0–8 complete; `0.1.0` is prepared for release** (see
-`CHANGELOG.md` and `docs/SECURITY-REVIEW.md`). This document is kept as the
-original planning artifact — see the stage-by-stage history in
-`CHANGELOG.md`'s `[0.1.0]` entry and each stage's own PR for what actually
-shipped.
+Status: **Stages 0–9 underway; `0.2.0` published to npm** (see
+`CHANGELOG.md` and `docs/SECURITY-REVIEW.md`). `0.1.0` published first but
+shipped broken against the live API — Etsy's shared-secret enforcement
+(effective February 9, 2026) rejected every request; `0.2.0` fixes it (see
+`CHANGELOG.md`'s `[0.2.0]` entry). This document is kept as the original
+planning artifact — see the stage-by-stage history in `CHANGELOG.md` and
+each stage's own PR for what actually shipped.
 
 ---
 
@@ -219,8 +221,11 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 ### Stage 9 — Beta → GA
 
 - Publish `0.1.0` to npm, dogfood against a real Etsy app (sandbox keys),
-  collect feedback for 1–2 weeks.
-- Address feedback, then cut `1.0.0`.
+  collect feedback for 1–2 weeks. Dogfooding caught a real bug on day one:
+  `0.1.0` predated Etsy's shared-secret enforcement and was rejected (403)
+  on every request against the live API — fixed and published as `0.2.0`.
+- Continue dogfooding against `0.2.0`, address further feedback, then cut
+  `1.0.0`.
 - **Exit criteria**: `1.0.0` published; README/CHANGELOG reflect it —
   `CHANGELOG.md` already has real entries from Changesets as of `0.1.0`.
 
@@ -274,5 +279,7 @@ deliverable).
 
 _This document is a planning artifact. Stages 0–8 are complete — see
 `docs/ARCHITECTURE.md` for the locked module contract and `CHANGELOG.md`'s
-`[0.1.0]` entry for what each stage actually shipped. Stage 9 (Beta → GA)
-is next: publish `0.1.0`, dogfood, then cut `1.0.0`._
+`[0.1.0]`/`[0.2.0]` entries for what each stage actually shipped. Stage 9
+(Beta → GA) is underway: `0.1.0` published, dogfooding caught a real bug
+(fixed in `0.2.0`), and dogfooding continues from here before cutting
+`1.0.0`._

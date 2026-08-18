@@ -40,7 +40,7 @@ describe("package.json", () => {
     expect(packageJson.engines.node).toBe(">=20");
   });
 
-  it("is valid semver on the 0.1.x line (no prerelease/build metadata, no leading zeros)", () => {
-    expect(packageJson.version).toMatch(/^0\.1\.(0|[1-9]\d*)$/);
+  it("is valid semver on the pre-1.0 line (no prerelease/build metadata, no leading zeros)", () => {
+    expect(packageJson.version).toMatch(/^0\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
   });
 });
