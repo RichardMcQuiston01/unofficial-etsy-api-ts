@@ -12,7 +12,7 @@ Taxonomy nodes are how Etsy categorizes listings — you need a
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>" }); // apiKey-only, no auth needed
+const etsy = createEtsyClient({ apiKey: "<keystring>", apiKeySecret: "<shared secret>" }); // apiKey-only, no auth needed
 
 const sellerNodes = await etsy.catalog.sellerTaxonomy.getNodes();
 const properties = await etsy.catalog.sellerTaxonomy.getProperties(taxonomyId);

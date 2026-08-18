@@ -22,6 +22,10 @@ export interface PkceChallenge {
 export interface EtsyOAuthConfig {
   /** Same value as EtsyClientConfig.apiKey — Etsy's keystring doubles as the OAuth client_id. */
   clientId: string;
+  /** Same value as EtsyClientConfig.apiKeySecret. Sent as `x-api-key:
+   *  <clientId>:<clientSecret>` on token-endpoint requests — required since
+   *  Etsy's February 2026 shared-secret enforcement. */
+  clientSecret: string;
   redirectUri: string;
   scopes: EtsyScope[];
   /** Defaults to InMemoryTokenStore. */
@@ -95,12 +99,16 @@ function toTokenSet(response: EtsyTokenResponse, requestedScopes: EtsyScope[]): 
 
 async function requestToken(
   fetchImpl: typeof fetch,
+  apiKeyHeader: string,
   body: Record<string, string>,
   timeoutMs: number,
 ): Promise<EtsyTokenResponse> {
   const response = await fetchImpl(TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "x-api-key": apiKeyHeader,
+    },
     body: new URLSearchParams(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -118,6 +126,7 @@ async function requestToken(
 /** PKCE + OAuth 2.0 authorization-code flow, and rotating token refresh. */
 export class EtsyOAuth {
   #clientId: string;
+  #clientSecret: string;
   #redirectUri: string;
   #scopes: EtsyScope[];
   #tokenStore: TokenStore;
@@ -138,6 +147,7 @@ export class EtsyOAuth {
     }
 
     this.#clientId = config.clientId;
+    this.#clientSecret = config.clientSecret;
     this.#redirectUri = config.redirectUri;
     this.#scopes = config.scopes;
     this.#tokenStore = config.tokenStore ?? new InMemoryTokenStore();
@@ -175,6 +185,7 @@ export class EtsyOAuth {
   async exchangeCode(code: string, codeVerifier: string): Promise<TokenSet> {
     const response = await requestToken(
       this.#fetch,
+      `${this.#clientId}:${this.#clientSecret}`,
       {
         grant_type: "authorization_code",
         client_id: this.#clientId,
@@ -193,6 +204,7 @@ export class EtsyOAuth {
   async refresh(refreshToken: string): Promise<TokenSet> {
     const response = await requestToken(
       this.#fetch,
+      `${this.#clientId}:${this.#clientSecret}`,
       {
         grant_type: "refresh_token",
         client_id: this.#clientId,

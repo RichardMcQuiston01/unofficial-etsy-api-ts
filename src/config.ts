@@ -8,8 +8,13 @@ export interface RetryConfig {
 }
 
 export interface EtsyClientConfig {
-  /** Etsy "keystring" — sent as x-api-key and doubles as the OAuth client_id. */
+  /** Etsy "keystring" — doubles as the OAuth client_id. Sent (with
+   *  `apiKeySecret`) as the x-api-key header on every request. */
   apiKey: string;
+  /** Etsy app's shared secret. Since Etsy's February 2026 shared-secret
+   *  enforcement, every request must send `x-api-key: <apiKey>:<apiKeySecret>`
+   *  — requests with the keystring alone are rejected with 403. */
+  apiKeySecret: string;
   /** Injectable fetch implementation; defaults to global fetch. Required in
    *  environments without one. */
   fetch?: typeof fetch;

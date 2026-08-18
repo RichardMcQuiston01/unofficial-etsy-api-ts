@@ -20,8 +20,11 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 
 - Node.js 20 or later (also targets browsers and edge runtimes such as
   Cloudflare Workers, Deno, and Bun — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)).
-- An Etsy app keystring/API key, obtained from the
-  [Etsy Developers portal](https://www.etsy.com/developers/your-apps).
+- An Etsy app keystring/API key **and** its shared secret, both obtained
+  from the [Etsy Developers portal](https://www.etsy.com/developers/your-apps)
+  — Etsy's [shared-secret enforcement](https://github.com/etsy/open-api/discussions/1531)
+  (effective February 9, 2026) rejects any request that sends the keystring
+  alone.
 
 ### Installation
 
@@ -37,7 +40,10 @@ once `0.1.0` ships.)
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>" });
+const etsy = createEtsyClient({
+  apiKey: "<your Etsy keystring>",
+  apiKeySecret: "<your Etsy shared secret>",
+});
 ```
 
 `createEtsyClient` returns an `EtsyClient` with one `listings`/`catalog`/
@@ -53,7 +59,10 @@ shop lookups, etc. — need no OAuth):
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>" });
+const etsy = createEtsyClient({
+  apiKey: "<your Etsy keystring>",
+  apiKeySecret: "<your Etsy shared secret>",
+});
 
 const { results: listings } = await etsy.listings.findAllActive({ keywords: "wall art" });
 const shop = await etsy.shop.get(12345);
@@ -67,6 +76,7 @@ import { createEtsyClient, EtsyOAuth } from "@richardmcquiston01/etsy-api";
 
 const auth = new EtsyOAuth({
   clientId: "<your Etsy keystring>",
+  clientSecret: "<your Etsy shared secret>",
   redirectUri: "https://example.com/oauth/callback",
   scopes: ["listings_r", "listings_w", "shops_r"],
 });
@@ -80,7 +90,11 @@ await auth.exchangeCode("<code from callback query string>", pkce.codeVerifier);
 
 // 3. Build the client — EtsyHttpClient calls auth.getValidAccessToken()
 //    (refreshing transparently) for every operation that needs a scope.
-const etsy = createEtsyClient({ apiKey: "<your Etsy keystring>", auth });
+const etsy = createEtsyClient({
+  apiKey: "<your Etsy keystring>",
+  apiKeySecret: "<your Etsy shared secret>",
+  auth,
+});
 
 const receipts = await etsy.commerce.receipts.getAll(12345);
 ```

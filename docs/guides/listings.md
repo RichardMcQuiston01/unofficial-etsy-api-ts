@@ -20,7 +20,7 @@ quickstart for how to build one; this guide picks up from there.
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth });
+const etsy = createEtsyClient({ apiKey: "<keystring>", apiKeySecret: "<shared secret>", auth });
 
 // Create a draft listing.
 const draft = await etsy.listings.create(shopId, {

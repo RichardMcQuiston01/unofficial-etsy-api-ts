@@ -18,7 +18,11 @@ they're shop-management data — see each method's doc comment for which).
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth /* for writes; see README */ });
+const etsy = createEtsyClient({
+  apiKey: "<keystring>",
+  apiKeySecret: "<shared secret>",
+  auth /* for writes; see README */,
+});
 
 const shop = await etsy.shop.get(shopId); // apiKey-only
 const byOwner = await etsy.shop.getByOwnerUserId(userId); // apiKey-only

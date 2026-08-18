@@ -19,6 +19,7 @@ function fakeOAuth(accessToken: string): EtsyOAuth {
 function makeShop(fetchImpl: typeof fetch) {
   const http = new EtsyHttpClient({
     apiKey: "test-key",
+    apiKeySecret: "test-secret",
     fetch: fetchImpl,
     auth: fakeOAuth("access-token-123"),
   });
@@ -30,7 +31,7 @@ describe("ShopResource — top-level Shop operations", () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).pathname).toBe("/v3/application/shops/123");
       const headers = new Headers(init?.headers);
-      expect(headers.get("x-api-key")).toBe("test-key");
+      expect(headers.get("x-api-key")).toBe("test-key:test-secret");
       expect(headers.has("Authorization")).toBe(false);
       return jsonResponse({ shop_id: 123, shop_name: "Test Shop" });
     });
