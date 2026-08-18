@@ -177,13 +177,15 @@ function buildMultipartBody(data: Record<string, unknown>): FormData {
 }
 
 /**
- * fetch-based transport: injects auth (x-api-key always, OAuth bearer token
- * when the operation needs it), tracks rate-limit headers, retries 429s,
- * and maps non-2xx responses to EtsyApiError. See
+ * fetch-based transport: injects auth (x-api-key, formatted as
+ * `apiKey:apiKeySecret`, on every request; OAuth bearer token when the
+ * operation needs it), tracks rate-limit headers, retries 429s, and maps
+ * non-2xx responses to EtsyApiError. See
  * docs/ARCHITECTURE.md#transport-srchttpetsyhttpclientts.
  */
 export class EtsyHttpClient {
   readonly #apiKey: string;
+  readonly #apiKeySecret: string;
   readonly #baseUrl: string;
   readonly #fetch: typeof fetch;
   readonly #auth: EtsyClientConfig["auth"];
@@ -205,6 +207,7 @@ export class EtsyHttpClient {
     }
 
     this.#apiKey = config.apiKey;
+    this.#apiKeySecret = config.apiKeySecret;
     this.#baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
     this.#fetch = fetchImpl;
     this.#auth = config.auth;
@@ -221,7 +224,7 @@ export class EtsyHttpClient {
   async request<T>(options: RequestOptions): Promise<T> {
     const url = this.#buildUrl(options);
     const headers = new Headers();
-    headers.set("x-api-key", this.#apiKey);
+    headers.set("x-api-key", `${this.#apiKey}:${this.#apiKeySecret}`);
 
     if (options.auth === "oauth") {
       if (!this.#auth) {

@@ -27,6 +27,7 @@ describe("EtsyHttpClient — happy path", () => {
 
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
 
@@ -42,7 +43,7 @@ describe("EtsyHttpClient — happy path", () => {
     expect(result.count).toBe(1);
     const [, init] = fetchMock.mock.calls[0]!;
     const headers = new Headers((init as RequestInit).headers);
-    expect(headers.get("x-api-key")).toBe("test-key");
+    expect(headers.get("x-api-key")).toBe("test-key:test-secret");
     expect(headers.has("Authorization")).toBe(false);
   });
 
@@ -50,6 +51,7 @@ describe("EtsyHttpClient — happy path", () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -73,6 +75,7 @@ describe("EtsyHttpClient — happy path", () => {
 
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -92,6 +95,7 @@ describe("EtsyHttpClient — happy path", () => {
     const fetchMock = vi.fn();
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -110,6 +114,7 @@ describe("EtsyHttpClient — happy path", () => {
     const fetchMock = vi.fn();
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -140,6 +145,7 @@ describe("EtsyHttpClient — happy path", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -172,7 +178,11 @@ describe("EtsyHttpClient — happy path", () => {
         },
       ),
     );
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     await client.request({
       method: "GET",
@@ -197,7 +207,11 @@ describe("EtsyHttpClient — happy path", () => {
         },
       ),
     );
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     await client.request({
       method: "GET",
@@ -221,6 +235,7 @@ describe("EtsyHttpClient — request bodies", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -247,6 +262,7 @@ describe("EtsyHttpClient — request bodies", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -278,6 +294,7 @@ describe("EtsyHttpClient — request bodies", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -303,6 +320,7 @@ describe("EtsyHttpClient — request bodies", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -328,6 +346,7 @@ describe("EtsyHttpClient — request bodies", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       auth: fakeOAuth("abc123"),
     });
@@ -350,6 +369,7 @@ describe("EtsyHttpClient — errors", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -383,7 +403,11 @@ describe("EtsyHttpClient — errors", () => {
           },
         }),
     );
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     const error = await client
       .request({
@@ -428,7 +452,11 @@ describe("EtsyHttpClient — errors", () => {
         },
       });
     });
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     await client.request({
       method: "GET",
@@ -471,7 +499,11 @@ describe("EtsyHttpClient — errors", () => {
         headers: { "Content-Type": "application/json" },
       });
     });
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     await client.request({
       method: "GET",
@@ -496,6 +528,7 @@ describe("EtsyHttpClient — errors", () => {
     const fetchMock = vi.fn(async () => jsonResponse({ error: "Internal error" }, { status: 500 }));
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -515,7 +548,11 @@ describe("EtsyHttpClient — errors", () => {
       async () =>
         new Response("<html>Bad Gateway</html>", { status: 502, statusText: "Bad Gateway" }),
     );
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     const error = await client
       .request({
@@ -541,7 +578,11 @@ describe("EtsyHttpClient — errors", () => {
           headers: { "Content-Type": "application/json" },
         }),
     );
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     const error = await client
       .request({
@@ -558,7 +599,11 @@ describe("EtsyHttpClient — errors", () => {
 
   it("falls back to 'HTTP <status>' when statusText is also empty", async () => {
     const fetchMock = vi.fn(async () => new Response("", { status: 418, statusText: "" }));
-    const client = new EtsyHttpClient({ apiKey: "test-key", fetch: fetchMock });
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock,
+    });
 
     const error = await client
       .request({
@@ -577,6 +622,7 @@ describe("EtsyHttpClient — errors", () => {
     const fetchMock = vi.fn();
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
       auth: fakeOAuth("abc123"),
     });
@@ -597,6 +643,7 @@ describe("EtsyHttpClient — errors", () => {
     const fetchMock = vi.fn();
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
       auth: fakeOAuth("abc123"),
     });
@@ -629,6 +676,7 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -657,6 +705,7 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
       retry: { maxBackoffMs: 5 },
     });
@@ -682,6 +731,7 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
       retry: { maxRetries: 2, maxBackoffMs: 5 },
     });
@@ -707,6 +757,7 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
     const controller = new AbortController();
@@ -746,6 +797,7 @@ describe("EtsyHttpClient — 429 retry policy", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock,
     });
 
@@ -772,6 +824,7 @@ describe("EtsyHttpClient — baseUrl", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       baseUrl: "http://localhost:3000/etsy",
       fetch: fetchMock as unknown as typeof fetch,
     });
@@ -793,6 +846,7 @@ describe("EtsyHttpClient — baseUrl", () => {
     });
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
 
@@ -817,6 +871,7 @@ describe("EtsyHttpClient — cancellation", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
     const controller = new AbortController();
@@ -849,6 +904,7 @@ describe("EtsyHttpClient — cancellation", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
     const controller = new AbortController();
@@ -886,6 +942,7 @@ describe("EtsyHttpClient — cancellation", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
     const controller = new AbortController();
@@ -913,6 +970,7 @@ describe("EtsyHttpClient — cancellation", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       timeoutMs: 10,
     });
@@ -938,6 +996,7 @@ describe("EtsyHttpClient — cancellation", () => {
     );
     const client = new EtsyHttpClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
       timeoutMs: 10,
     });
@@ -963,7 +1022,7 @@ describe("EtsyHttpClient — constructor", () => {
     // @ts-expect-error - simulating an environment without a global fetch.
     delete globalThis.fetch;
     try {
-      expect(() => new EtsyHttpClient({ apiKey: "test-key" })).toThrow(
+      expect(() => new EtsyHttpClient({ apiKey: "test-key", apiKeySecret: "test-secret" })).toThrow(
         /requires a fetch implementation/,
       );
     } finally {

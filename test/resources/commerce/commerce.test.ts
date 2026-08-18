@@ -22,6 +22,7 @@ function buildCommerce(
 ) {
   const http = new EtsyHttpClient({
     apiKey: "test-key",
+    apiKeySecret: "test-secret",
     fetch: fetchMock as unknown as typeof fetch,
     ...(opts.withAuth ? { auth: fakeOAuth("access-token-123") } : {}),
   });
@@ -39,7 +40,7 @@ describe("CommerceResource — receipts", () => {
       expect(parsed.searchParams.has("was_paid")).toBe(false);
       const headers = new Headers(init?.headers);
       expect(headers.get("Authorization")).toBe("Bearer access-token-123");
-      expect(headers.get("x-api-key")).toBe("test-key");
+      expect(headers.get("x-api-key")).toBe("test-key:test-secret");
       return jsonResponse({ count: 0, results: [] });
     });
     const commerce = buildCommerce(fetchMock);
@@ -279,7 +280,7 @@ describe("CommerceResource — Other (apiKey-only)", () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).pathname).toBe("/v3/application/openapi-ping");
       const headers = new Headers(init?.headers);
-      expect(headers.get("x-api-key")).toBe("test-key");
+      expect(headers.get("x-api-key")).toBe("test-key:test-secret");
       expect(headers.has("Authorization")).toBe(false);
       return jsonResponse({ application_id: 1 });
     });
