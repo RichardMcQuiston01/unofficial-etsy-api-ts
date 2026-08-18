@@ -7,6 +7,12 @@ const TOKEN_URL = "https://openapi.etsy.com/v3/public/oauth/token";
 /** Refresh proactively when the access token is within this many ms of expiring. */
 const EXPIRY_BUFFER_MS = 60_000;
 
+/** Matches EtsyClientConfig's default — see docs/ARCHITECTURE.md. */
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** Truncated so an oversized or unexpected token-endpoint body can't blow up caller log sinks. */
+const MAX_ERROR_BODY_LENGTH = 500;
+
 export interface PkceChallenge {
   codeVerifier: string;
   codeChallenge: string;
@@ -24,6 +30,13 @@ export interface EtsyOAuthConfig {
    *  EtsyClientConfig.fetch so the OAuth flow works in the same restricted
    *  environments EtsyHttpClient supports. */
   fetch?: typeof fetch;
+  /** Per-request timeout in ms for the token endpoint (exchangeCode/refresh),
+   *  applied via AbortSignal.timeout(). Default 30_000. Mirrors
+   *  EtsyClientConfig.timeoutMs — without this, a stalled token endpoint
+   *  would hang getValidAccessToken() (and everything awaiting the shared
+   *  #refreshInFlight promise) indefinitely, regardless of the transport's
+   *  own timeout. */
+  timeoutMs?: number;
 }
 
 interface EtsyTokenResponse {
@@ -83,16 +96,20 @@ function toTokenSet(response: EtsyTokenResponse, requestedScopes: EtsyScope[]): 
 async function requestToken(
   fetchImpl: typeof fetch,
   body: Record<string, string>,
+  timeoutMs: number,
 ): Promise<EtsyTokenResponse> {
   const response = await fetchImpl(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(body),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Etsy OAuth token request failed (${response.status}): ${text}`);
+    const truncated =
+      text.length > MAX_ERROR_BODY_LENGTH ? `${text.slice(0, MAX_ERROR_BODY_LENGTH)}...` : text;
+    throw new Error(`Etsy OAuth token request failed (${response.status}): ${truncated}`);
   }
 
   return (await response.json()) as EtsyTokenResponse;
@@ -105,6 +122,7 @@ export class EtsyOAuth {
   #scopes: EtsyScope[];
   #tokenStore: TokenStore;
   #fetch: typeof fetch;
+  #timeoutMs: number;
   /** Dedupes concurrent refresh() calls so two requests racing near expiry
    *  don't both spend the same (rotating) refresh token — the second
    *  exchange would otherwise fail with an already-consumed token. */
@@ -124,6 +142,7 @@ export class EtsyOAuth {
     this.#scopes = config.scopes;
     this.#tokenStore = config.tokenStore ?? new InMemoryTokenStore();
     this.#fetch = fetchImpl;
+    this.#timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /**
@@ -154,13 +173,17 @@ export class EtsyOAuth {
    * Exchanges an authorization code for a TokenSet; persists via TokenStore.
    */
   async exchangeCode(code: string, codeVerifier: string): Promise<TokenSet> {
-    const response = await requestToken(this.#fetch, {
-      grant_type: "authorization_code",
-      client_id: this.#clientId,
-      redirect_uri: this.#redirectUri,
-      code,
-      code_verifier: codeVerifier,
-    });
+    const response = await requestToken(
+      this.#fetch,
+      {
+        grant_type: "authorization_code",
+        client_id: this.#clientId,
+        redirect_uri: this.#redirectUri,
+        code,
+        code_verifier: codeVerifier,
+      },
+      this.#timeoutMs,
+    );
     const tokens = toTokenSet(response, this.#scopes);
     await this.#tokenStore.save(tokens);
     return tokens;
@@ -168,11 +191,15 @@ export class EtsyOAuth {
 
   /** Rotates the refresh token; persists the new TokenSet via TokenStore. */
   async refresh(refreshToken: string): Promise<TokenSet> {
-    const response = await requestToken(this.#fetch, {
-      grant_type: "refresh_token",
-      client_id: this.#clientId,
-      refresh_token: refreshToken,
-    });
+    const response = await requestToken(
+      this.#fetch,
+      {
+        grant_type: "refresh_token",
+        client_id: this.#clientId,
+        refresh_token: refreshToken,
+      },
+      this.#timeoutMs,
+    );
     const tokens = toTokenSet(response, this.#scopes);
     await this.#tokenStore.save(tokens);
     return tokens;

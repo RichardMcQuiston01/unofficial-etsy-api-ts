@@ -7,16 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `src/http/EtsyHttpClient.ts`: retry-backoff `sleep()` between 429 retries
+  is now abortable via the caller's `AbortSignal`, so cancelling mid-backoff
+  no longer waits out the full delay (up to `maxBackoffMs`, default 30s).
+- `src/http/EtsyHttpClient.ts`: `EtsyApiError`'s `rateLimit` now prefers the
+  failing response's own rate-limit snapshot over the persisted
+  cross-request one, which could otherwise be stale.
+- `src/http/EtsyHttpClient.ts`: `buildMultipartBody` now wraps
+  `ArrayBuffer`/typed-array (`Uint8Array`, `Buffer`, `DataView`) values in a
+  `Blob`, instead of only accepting pre-constructed `Blob` instances — fixes
+  multipart uploads for Node callers reading files with `fs.readFile`.
+- `src/http/pagination.ts`: `paginate()` now also stops once the running
+  offset reaches the endpoint's reported `count`, as a defensive upper
+  bound alongside the existing short-page check, for endpoints that keep
+  returning full pages past the reported total.
+- `src/auth/EtsyOAuth.ts`: the token endpoint (`exchangeCode`/`refresh`) now
+  has a per-request timeout (`EtsyOAuthConfig.timeoutMs`, default 30s,
+  matching `EtsyClientConfig.timeoutMs`) and truncates oversized error
+  response bodies before including them in the thrown error.
+- GitHub Actions workflows (`ci.yml`, `release.yml`, `docs.yml`): checkout
+  steps now set `persist-credentials: false`; `docs.yml`'s Pages
+  permissions are scoped to the `deploy` job instead of the whole workflow.
+- `.gitignore`: broadened the `.env*` pattern (with a `!.env.example`
+  exception) instead of listing specific env-file variants individually.
+- Stale documentation fixes: `ROADMAP.md`'s Node version note, `docs/guides/{listings,commerce}.md`'s
+  `auth` placeholder wording, `docs/ARCHITECTURE.md`'s `paginate()` doc
+  comment, and a README grammar fix.
+- `ListingFilesResource.upload`/`ListingImagesResource.upload`/`ListingVideosResource.upload`
+  now take a dedicated `UploadListing{File,Image,Video}Input` type (the
+  generated request-body type with its binary field corrected from
+  `string | null` to `Blob | null`) instead of the raw generated type, so
+  callers no longer need an `as unknown as UploadListing*RequestBody` cast
+  — see `docs/guides/listings.md`.
+- `scripts/codegen.ts`: the `AUTO-GENERATED from docs/<file>` banner now
+  names the actual spec file `findLatestSpecFile()` selected, instead of
+  `spec.info.version` — the two could diverge if a future spec update ships
+  under a new filename without bumping the internal version. `test/codegen.test.ts`
+  now resolves the same highest-semver spec file instead of hardcoding
+  `docs/3.0.0.json`.
+- `CHANGELOG.md`'s `[0.1.0]` entry: corrected two stale notes left over from
+  Stage 1 (`engines.node >=18`, Node 18 in CI) to match the released
+  `>=20` configuration.
+- `ROADMAP.md`: Stage 7/8/9 exit criteria no longer describe a
+  `0.1.0-beta.x` pre-release tag or an already-cut `1.0.0` — no beta tag
+  was ever pushed, and `0.1.0` publishes directly.
+- `test/package.test.ts`: the `package.json` version assertion is now a
+  fully-anchored semver check (`/^0\.1\.(0|[1-9]\d*)$/`) instead of an
+  unanchored prefix match, which accepted malformed values like
+  `0.1.0garbage` or `0.1.01`.
+
+Reviewed and rejected as incorrect: an automated finding that
+`createReceiptShipment` should use form-encoding instead of JSON — the
+vendored OpenAPI spec (`docs/3.0.0.json`) confirms `application/json` is
+the correct encoding, matching the existing implementation.
+
 ## [0.1.0] - 2026-08-17
 
 ### Added
 
 - Project scaffolding: `package.json` (dual ESM/CJS build via `tsup`,
-  `exports` map, `engines.node >=18`), `tsconfig.json`, ESLint 10 flat
+  `exports` map, `engines.node >=20`), `tsconfig.json`, ESLint 10 flat
   config (`typescript-eslint`), Prettier, Vitest with coverage, and a
   `.gitignore`.
 - GitHub Actions CI workflow running format/lint/typecheck/test/build on
-  Node 18/20/22 for every push and PR against `dev`/`main`.
+  Node 20/22 for every push and PR against `dev`/`main`.
 - `ROADMAP.md`: multi-agent, multi-stage plan for building the package.
 - `docs/ARCHITECTURE.md`: Stage 0 interfaces-only contract (client config,
   transport, auth/OAuth2+PKCE, error/rate-limit types, resource module

@@ -7,6 +7,13 @@ import type {
   UploadListingVideoResponse,
 } from "../../generated/operations.js";
 
+/** UploadListingVideoRequestBody with `video` corrected to `Blob | null` — the generated
+ *  type says `string | null` (openapi-typescript's mapping for `format: binary`), but the
+ *  real wire value is a Blob, which EtsyHttpClient's multipart builder passes through as-is. */
+export type UploadListingVideoInput = Omit<UploadListingVideoRequestBody, "video"> & {
+  video?: Blob | null;
+};
+
 /** `ShopListing Video` operations, nested under `listings.videos`. */
 export class ListingVideosResource {
   #http: EtsyHttpClient;
@@ -41,7 +48,7 @@ export class ListingVideosResource {
   upload(
     shopId: number,
     listingId: number,
-    body: UploadListingVideoRequestBody,
+    body: UploadListingVideoInput,
   ): Promise<UploadListingVideoResponse> {
     return this.#http.request<UploadListingVideoResponse>({
       method: "POST",
