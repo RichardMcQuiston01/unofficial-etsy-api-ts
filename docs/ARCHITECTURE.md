@@ -53,8 +53,13 @@ that directory is regenerated or hand-edited by the codegen script.
 
 ```ts
 interface EtsyClientConfig {
-  /** Etsy "keystring" — sent as x-api-key and doubles as the OAuth client_id. */
+  /** Etsy "keystring" — doubles as the OAuth client_id. Sent (with
+   *  apiKeySecret) as the x-api-key header on every request. */
   apiKey: string;
+  /** Etsy app's shared secret. Required since Etsy's February 2026
+   *  shared-secret enforcement — every request sends
+   *  `x-api-key: <apiKey>:<apiKeySecret>`. */
+  apiKeySecret: string;
   /** Injectable fetch implementation; defaults to global fetch. Required in
    *  environments without one. */
   fetch?: typeof fetch;
@@ -123,6 +128,9 @@ interface PkceChallenge {
 interface EtsyOAuthConfig {
   /** Same value as EtsyClientConfig.apiKey. */
   clientId: string;
+  /** Same value as EtsyClientConfig.apiKeySecret. Sent as
+   *  `x-api-key: <clientId>:<clientSecret>` on token-endpoint requests. */
+  clientSecret: string;
   redirectUri: string;
   scopes: EtsyScope[];
   /** Defaults to InMemoryTokenStore. */

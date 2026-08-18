@@ -19,6 +19,7 @@ function fakeOAuth(accessToken: string): EtsyOAuth {
 function makeResource(fetchMock: typeof fetch, auth?: EtsyOAuth) {
   const http = new EtsyHttpClient({
     apiKey: "test-key",
+    apiKeySecret: "test-secret",
     fetch: fetchMock,
     ...(auth ? { auth } : {}),
   });
@@ -33,7 +34,7 @@ describe("ListingsResource — GET (apiKey)", () => {
       );
       expect(init?.method).toBe("GET");
       const headers = new Headers(init?.headers);
-      expect(headers.get("x-api-key")).toBe("test-key");
+      expect(headers.get("x-api-key")).toBe("test-key:test-secret");
       expect(headers.has("Authorization")).toBe(false);
       return jsonResponse({ listing_id: 123, title: "A Listing" });
     });

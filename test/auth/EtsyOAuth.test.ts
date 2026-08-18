@@ -29,6 +29,7 @@ const PKCE_VECTORS: { randomBytes: number[]; verifier: string; challenge: string
 function makeOAuth(tokenStore: TokenStore = new InMemoryTokenStore(), fetchImpl?: typeof fetch) {
   return new EtsyOAuth({
     clientId: "test-client-id",
+    clientSecret: "test-client-secret",
     redirectUri: "https://example.com/callback",
     scopes: ["listings_r", "listings_w"],
     tokenStore,
@@ -267,6 +268,7 @@ describe("EtsyOAuth token exchange and refresh", () => {
     );
     const oauth = new EtsyOAuth({
       clientId: "test-client-id",
+      clientSecret: "test-client-secret",
       redirectUri: "https://example.com/callback",
       scopes: ["listings_r"],
       fetch: fetchMock as unknown as typeof fetch,
@@ -286,6 +288,7 @@ describe("EtsyOAuth — constructor and environment requirements", () => {
   it("defaults to an InMemoryTokenStore when tokenStore is omitted from config", async () => {
     const oauth = new EtsyOAuth({
       clientId: "test-client-id",
+      clientSecret: "test-client-secret",
       redirectUri: "https://example.com/callback",
       scopes: ["listings_r"],
       fetch: vi.fn(),

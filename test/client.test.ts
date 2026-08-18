@@ -20,7 +20,7 @@ function fakeOAuth(accessToken: string): EtsyOAuth {
 
 describe("createEtsyClient", () => {
   it("builds an EtsyClient with one shared EtsyHttpClient and all four resource clusters", () => {
-    const client = createEtsyClient({ apiKey: "test-key" });
+    const client = createEtsyClient({ apiKey: "test-key", apiKeySecret: "test-secret" });
 
     expect(client.http).toBeInstanceOf(EtsyHttpClient);
     expect(client.listings).toBeInstanceOf(ListingsResource);
@@ -32,7 +32,7 @@ describe("createEtsyClient", () => {
 
   it("exposes auth on the client when EtsyClientConfig.auth is provided", () => {
     const auth = fakeOAuth("access-token-123");
-    const client = createEtsyClient({ apiKey: "test-key", auth });
+    const client = createEtsyClient({ apiKey: "test-key", apiKeySecret: "test-secret", auth });
 
     expect(client.auth).toBe(auth);
   });
@@ -45,6 +45,7 @@ describe("createEtsyClient", () => {
 
     const client = createEtsyClient({
       apiKey: "test-key",
+      apiKeySecret: "test-secret",
       fetch: fetchMock as unknown as typeof fetch,
     });
 

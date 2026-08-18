@@ -18,6 +18,7 @@ function fakeOAuth(accessToken: string): EtsyOAuth {
 function makeCatalog(fetchMock: typeof fetch) {
   const http = new EtsyHttpClient({
     apiKey: "test-key",
+    apiKeySecret: "test-secret",
     fetch: fetchMock,
     auth: fakeOAuth("access-token-123"),
   });
@@ -29,7 +30,7 @@ describe("CatalogResource — buyer/seller taxonomy", () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).pathname).toBe("/v3/application/seller-taxonomy/nodes");
       const headers = new Headers(init?.headers);
-      expect(headers.get("x-api-key")).toBe("test-key");
+      expect(headers.get("x-api-key")).toBe("test-key:test-secret");
       expect(headers.has("Authorization")).toBe(false);
       return jsonResponse({ results: [] });
     });

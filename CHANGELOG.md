@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `EtsyClientConfig.apiKey` alone is no longer sufficient —
+  `EtsyClientConfig.apiKeySecret` (and `EtsyOAuthConfig.clientSecret`) are
+  now required. Etsy's [shared-secret enforcement](https://github.com/etsy/open-api/discussions/1531),
+  effective February 9, 2026, rejects any request whose `x-api-key` header
+  is just the keystring — it must now be `<apiKey>:<apiKeySecret>`.
+  `EtsyHttpClient` and `EtsyOAuth`'s token-endpoint requests
+  (`exchangeCode`/`refresh`) both send the combined header.
+
 ### Fixed
 
 - `src/http/EtsyHttpClient.ts`: retry-backoff `sleep()` between 429 retries

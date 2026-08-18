@@ -22,7 +22,7 @@ quickstart for how to build one; every method in this cluster needs it.
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth });
+const etsy = createEtsyClient({ apiKey: "<keystring>", apiKeySecret: "<shared secret>", auth });
 
 const { results: receipts } = await etsy.commerce.receipts.getAll(shopId, {
   limit: 25,
@@ -83,7 +83,7 @@ await etsy.commerce.user.addresses.delete(addressId);
 ## Utility operations (`Other` tag — apiKey-only, no OAuth needed)
 
 ```ts
-const anonEtsy = createEtsyClient({ apiKey: "<keystring>" }); // no auth needed for these two
+const anonEtsy = createEtsyClient({ apiKey: "<keystring>", apiKeySecret: "<shared secret>" }); // no auth needed for these two
 
 await anonEtsy.commerce.ping(); // health check
 const scopes = await anonEtsy.commerce.tokenScopes({ token: someAccessToken }); // introspect a token
