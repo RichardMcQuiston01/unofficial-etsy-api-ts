@@ -11,7 +11,7 @@
  * Only ever writes to src/generated/** — nothing else.
  */
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { format, resolveConfig } from "prettier";
 import openapiTS, { astToString } from "openapi-typescript";
@@ -77,13 +77,13 @@ function collectOperations(spec: OpenApiSpec) {
   return operations;
 }
 
-function generateSchemasSource(spec: OpenApiSpec): string {
+function generateSchemasSource(spec: OpenApiSpec, specFileName: string): string {
   const schemaNames = Object.keys(spec.components.schemas).sort((a, b) => a.localeCompare(b));
   const lines = schemaNames.map(
     (name) => `export type ${name} = components["schemas"]["${name}"];`,
   );
   return [
-    banner(spec, "src/generated/schemas.ts"),
+    banner(specFileName, "src/generated/schemas.ts"),
     `import type { components } from "./openapi.js";`,
     "",
     `// ${schemaNames.length} schemas from the OpenAPI spec's components.schemas.`,
@@ -92,7 +92,7 @@ function generateSchemasSource(spec: OpenApiSpec): string {
   ].join("\n");
 }
 
-function generateOperationsSource(spec: OpenApiSpec): string {
+function generateOperationsSource(spec: OpenApiSpec, specFileName: string): string {
   const operations = collectOperations(spec);
   const blocks = operations.map(({ op }) => {
     const pascal = toPascalCase(op.operationId);
@@ -141,7 +141,7 @@ function generateOperationsSource(spec: OpenApiSpec): string {
   });
 
   return [
-    banner(spec, "src/generated/operations.ts"),
+    banner(specFileName, "src/generated/operations.ts"),
     `import type { operations } from "./openapi.js";`,
     "",
     `// ${operations.length} operations, keyed by operationId.`,
@@ -150,10 +150,13 @@ function generateOperationsSource(spec: OpenApiSpec): string {
   ].join("\n\n");
 }
 
-function banner(spec: OpenApiSpec, relativePath: string): string {
+/** Uses the spec file's own basename (from findLatestSpecFile), not spec.info.version — the
+ *  two can diverge (e.g. a hotfix ships under a new filename but keeps the same internal
+ *  version), which would otherwise point the banner at a docs/<version>.json that doesn't exist. */
+function banner(specFileName: string, relativePath: string): string {
   return [
     "/**",
-    ` * AUTO-GENERATED from docs/${spec.info.version}.json by scripts/codegen.ts.`,
+    ` * AUTO-GENERATED from docs/${specFileName} by scripts/codegen.ts.`,
     ` * Do not edit ${relativePath.split("/").pop()} by hand — rerun \`npm run codegen\`.`,
     " */",
     "",
@@ -168,17 +171,21 @@ async function writeFormatted(path: string, source: string): Promise<void> {
 
 async function main(): Promise<void> {
   const specPath = findLatestSpecFile();
+  const specFileName = basename(specPath);
   console.log(`Using spec: ${specPath}`);
 
   const spec = JSON.parse(readFileSync(specPath, "utf-8")) as OpenApiSpec;
 
   const ast = await openapiTS(pathToFileURL(specPath));
   const rawTypes = astToString(ast);
-  const openapiSource = [banner(spec, "src/generated/openapi.ts"), rawTypes].join("\n");
+  const openapiSource = [banner(specFileName, "src/generated/openapi.ts"), rawTypes].join("\n");
 
   await writeFormatted(join(generatedDir, "openapi.ts"), openapiSource);
-  await writeFormatted(join(generatedDir, "schemas.ts"), generateSchemasSource(spec));
-  await writeFormatted(join(generatedDir, "operations.ts"), generateOperationsSource(spec));
+  await writeFormatted(join(generatedDir, "schemas.ts"), generateSchemasSource(spec, specFileName));
+  await writeFormatted(
+    join(generatedDir, "operations.ts"),
+    generateOperationsSource(spec, specFileName),
+  );
 
   console.log(`Wrote schemas.ts, operations.ts, and openapi.ts to ${generatedDir}`);
 }

@@ -90,8 +90,28 @@ function computeRetryDelayMs(response: Response, attempt: number, maxBackoffMs: 
   return Math.min(exponentialMs, maxBackoffMs);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** Normalizes an AbortSignal's `reason` (typed `any`, usually a DOMException) to an Error. */
+function toAbortError(reason: unknown): Error {
+  return reason instanceof Error ? reason : new Error(String(reason));
+}
+
+/** Abortable so a caller cancelling mid-retry-backoff doesn't have to wait out the full delay. */
+function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(toAbortError(signal.reason));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(toAbortError(signal.reason));
+      },
+      { once: true },
+    );
+  });
 }
 
 async function extractEtsyError(response: Response): Promise<string> {
@@ -143,6 +163,12 @@ function buildMultipartBody(data: Record<string, unknown>): FormData {
     if (value === undefined || value === null) continue;
     if (value instanceof Blob) {
       formData.set(key, value);
+    } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+      // Common shape for Node callers reading files with fs.readFile (Buffer/Uint8Array).
+      // Cast needed: TS's generic ArrayBufferView<TArrayBuffer> doesn't structurally
+      // satisfy the ambient Blob constructor's BlobPart element type, even though every
+      // runtime ArrayBufferView is valid Blob input.
+      formData.set(key, new Blob([value] as ConstructorParameters<typeof Blob>[0]));
     } else {
       formData.set(key, stringifyField(key, value));
     }
@@ -240,17 +266,20 @@ export class EtsyHttpClient {
 
     if (response.status === 429 && attempt < this.#maxRetries) {
       const delayMs = computeRetryDelayMs(response, attempt, this.#maxBackoffMs);
-      await sleep(delayMs);
+      await sleep(delayMs, callerSignal);
       return this.#send<T>(url, method, headers, body, operationId, callerSignal, attempt + 1);
     }
 
     if (!response.ok) {
       const etsyError = await extractEtsyError(response);
+      // Prefer this response's own rate-limit snapshot over the persisted
+      // one — #lastRateLimit may be stale from an earlier, unrelated request.
+      const rateLimitForError = rateLimit ?? this.#lastRateLimit;
       throw new EtsyApiError({
         status: response.status,
         etsyError,
         operationId,
-        ...(this.#lastRateLimit ? { rateLimit: this.#lastRateLimit } : {}),
+        ...(rateLimitForError ? { rateLimit: rateLimitForError } : {}),
       });
     }
 

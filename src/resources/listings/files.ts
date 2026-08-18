@@ -7,6 +7,13 @@ import type {
   UploadListingFileResponse,
 } from "../../generated/operations.js";
 
+/** UploadListingFileRequestBody with `file` corrected to `Blob | null` — the generated
+ *  type says `string | null` (openapi-typescript's mapping for `format: binary`), but the
+ *  real wire value is a Blob, which EtsyHttpClient's multipart builder passes through as-is. */
+export type UploadListingFileInput = Omit<UploadListingFileRequestBody, "file"> & {
+  file?: Blob | null;
+};
+
 /** `ShopListing File` operations, nested under `listings.files`. */
 export class ListingFilesResource {
   #http: EtsyHttpClient;
@@ -41,7 +48,7 @@ export class ListingFilesResource {
   upload(
     shopId: number,
     listingId: number,
-    body: UploadListingFileRequestBody,
+    body: UploadListingFileInput,
   ): Promise<UploadListingFileResponse> {
     return this.#http.request<UploadListingFileResponse>({
       method: "POST",

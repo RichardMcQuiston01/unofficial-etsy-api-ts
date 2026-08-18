@@ -14,10 +14,13 @@ a mix of `apiKey`-only and `oauth` — see each method's doc comment in
 
 ## CRUD
 
+`auth` below is an `EtsyOAuth` instance — see the README's OAuth2 + PKCE
+quickstart for how to build one; this guide picks up from there.
+
 ```ts
 import { createEtsyClient } from "@richardmcquiston01/etsy-api";
 
-const etsy = createEtsyClient({ apiKey: "<keystring>", auth /* EtsyOAuth, see README */ });
+const etsy = createEtsyClient({ apiKey: "<keystring>", auth });
 
 // Create a draft listing.
 const draft = await etsy.listings.create(shopId, {
@@ -64,19 +67,19 @@ const byPolicy = await etsy.listings.getByShopReturnPolicy(shopId, returnPolicyI
 
 Etsy's binary-upload fields (`file`/`image`/`video`) are typed as `string`
 by the generated OpenAPI types (`openapi-typescript`'s default mapping for
-`format: binary`) — the real wire value is a `Blob`, and `EtsyHttpClient`'s
-multipart builder passes `Blob` instances through untouched. Cast at the
-call site:
+`format: binary`), but the real wire value is a `Blob` — `EtsyHttpClient`'s
+multipart builder passes `Blob` instances through untouched. Each `upload()`
+method takes a dedicated input type (`UploadListingImageInput` and its
+`File`/`Video` counterparts) with that field corrected to `Blob | null`, so
+no cast is needed at the call site:
 
 ```ts
-import type { UploadListingImageRequestBody } from "@richardmcquiston01/etsy-api";
-
 const imageBlob = new Blob([fileBytes], { type: "image/jpeg" });
 
 const image = await etsy.listings.images.upload(shopId, listingId, {
   image: imageBlob,
   rank: 1,
-} as unknown as UploadListingImageRequestBody);
+});
 
 const allImages = await etsy.listings.images.getAll(listingId); // apiKey-only, no shop_id needed
 await etsy.listings.images.delete(shopId, listingId, image.listing_image_id!);
