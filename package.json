@@ -1,6 +1,6 @@
 {
   "name": "@richardmcquiston01/etsy-api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Framework-agnostic TypeScript client for Etsy's Open API v3.",
   "type": "module",
   "license": "Apache-2.0",

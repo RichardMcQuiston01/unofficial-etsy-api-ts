@@ -101,6 +101,11 @@ No GPL/AGPL or other license incompatible with Apache-2.0.
 - **PKCE verifier never logged.** Confirmed above — never logged, only
   ever returned to the caller (by design) or sent as a form field directly
   to Etsy's token endpoint over HTTPS.
+- **`0.2.0` addendum**: `EtsyClientConfig.apiKeySecret`/`EtsyOAuthConfig.clientSecret`
+  (added to satisfy Etsy's shared-secret enforcement) hold to the same
+  standard — checked against every `throw`/`EtsyApiError` call site added
+  or touched by that change; the secret is only ever interpolated into the
+  `x-api-key` header sent to Etsy over HTTPS, never logged or thrown.
 
 ## Sign-off
 

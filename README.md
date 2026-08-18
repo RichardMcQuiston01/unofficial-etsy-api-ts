@@ -4,12 +4,10 @@
 
 Framework agnostic TypeScript NPM package for interacting with Etsy's API service.
 
-> **Status**: pre-release, under active development. There is no published
-> version yet. See [ROADMAP.md](./ROADMAP.md) for the build plan and
-> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the locked API
-> contract. The client facade and all four resource clusters (listings,
-> catalog, shop, commerce) are implemented; install/publish instructions
-> below will be filled in once `0.1.0` ships to npm. See
+> **Status**: published to npm. See [ROADMAP.md](./ROADMAP.md) for the
+> build plan and [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the
+> locked API contract. The client facade and all four resource clusters
+> (listings, catalog, shop, commerce) are implemented and published. See
 > [docs/SECURITY-REVIEW.md](./docs/SECURITY-REVIEW.md) for the Stage 8
 > QA/security audit, and [SECURITY.md](./SECURITY.md) to report a
 > vulnerability.
@@ -31,9 +29,6 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 ```sh
 npm install @richardmcquiston01/etsy-api
 ```
-
-(Not yet published to npm — see the status note above. This is the command
-once `0.1.0` ships.)
 
 ### Adding to Project
 

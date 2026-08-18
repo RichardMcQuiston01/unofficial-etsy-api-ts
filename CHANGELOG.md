@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-18
+
 ### Changed
 
 - **Breaking:** `EtsyClientConfig.apiKey` alone is no longer sufficient —
@@ -310,5 +312,6 @@ invocation` in spec-compliant browsers (the receiver becomes the
   tooling state (e.g. isolated git worktrees for parallel Stage 4
   work) that shouldn't be tracked in the repo.
 
-[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/releases/tag/v0.1.0
