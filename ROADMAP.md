@@ -220,8 +220,9 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 - Manual check: no token/secret ever appears in thrown errors, logs, or
   serialized objects; PKCE verifier never logged.
 - **Exit criteria**: no unresolved high/critical findings; sign-off recorded
-  in `docs/SECURITY-REVIEW.md`, covering the `0.1.0` publish and again,
-  unchanged unless new findings surface, when `0.1.0` promotes to `1.0.0`.
+  in `docs/SECURITY-REVIEW.md`, covering the `0.1.0` publish, re-checked for
+  the `0.2.0` shared-secret fix, and to be revisited again, unchanged unless
+  new findings surface, whenever `1.0.0` is eventually cut.
 
 ### Stage 9 — Beta → GA
 
