@@ -238,7 +238,7 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 - Cutting `1.0.0` is intentionally left open-ended: a future,
   maintainer-driven decision once continued real-world usage warrants
   declaring the public API stable. Not a blocker for this document —
-  `CHANGELOG.md` already has real entries from Changesets as of `0.1.0`
+  `CHANGELOG.md` already has real entries from Changesets through `0.2.0`
   and will gain a `[1.0.0]` entry whenever that call is made.
 
 ---
