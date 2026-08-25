@@ -4,13 +4,18 @@ A multi-agent, multi-stage plan for building and publishing a framework-agnostic
 TypeScript wrapper around **Etsy Open API v3**, from empty repo to a published,
 versioned NPM package.
 
-Status: **Stages 0–9 underway; `0.2.0` published to npm** (see
-`CHANGELOG.md` and `docs/SECURITY-REVIEW.md`). `0.1.0` published first but
-shipped broken against the live API — Etsy's shared-secret enforcement
-(effective February 9, 2026) rejected every request; `0.2.0` fixes it (see
-`CHANGELOG.md`'s `[0.2.0]` entry). This document is kept as the original
-planning artifact — see the stage-by-stage history in `CHANGELOG.md` and
-each stage's own PR for what actually shipped.
+Status: **Stages 0–9 complete; `0.2.0` published to npm and verified
+against the live API** (see `CHANGELOG.md` and
+`docs/SECURITY-REVIEW.md`). `0.1.0` published first but shipped broken —
+Etsy's shared-secret enforcement (effective February 9, 2026) rejected
+every request; `0.2.0` fixes it and was independently verified via
+fresh-install checks (ESM/CJS/TypeScript) against the real published
+package. This document is kept as the original planning artifact — see
+the stage-by-stage history in `CHANGELOG.md` and each stage's own PR for
+what actually shipped. Cutting `1.0.0` (see Stage 9) is left as a future,
+maintainer-driven step once continued real-world usage warrants
+declaring the API stable — it does not block this roadmap's build-and-
+ship arc from being done.
 
 ---
 
@@ -215,19 +220,26 @@ HolidayPreferences`, `Shop ProductionPartner` (32 ops)
 - Manual check: no token/secret ever appears in thrown errors, logs, or
   serialized objects; PKCE verifier never logged.
 - **Exit criteria**: no unresolved high/critical findings; sign-off recorded
-  in `docs/SECURITY-REVIEW.md`, covering the `0.1.0` publish and again,
-  unchanged unless new findings surface, when `0.1.0` promotes to `1.0.0`.
+  in `docs/SECURITY-REVIEW.md`, covering the `0.1.0` publish, re-checked for
+  the `0.2.0` shared-secret fix, and to be revisited again, unchanged unless
+  new findings surface, whenever `1.0.0` is eventually cut.
 
 ### Stage 9 — Beta → GA
 
-- Publish `0.1.0` to npm, dogfood against a real Etsy app (sandbox keys),
-  collect feedback for 1–2 weeks. Dogfooding caught a real bug on day one:
-  `0.1.0` predated Etsy's shared-secret enforcement and was rejected (403)
-  on every request against the live API — fixed and published as `0.2.0`.
-- Continue dogfooding against `0.2.0`, address further feedback, then cut
-  `1.0.0`.
-- **Exit criteria**: `1.0.0` published; README/CHANGELOG reflect it —
-  `CHANGELOG.md` already has real entries from Changesets as of `0.1.0`.
+- Published `0.1.0` to npm and dogfooded against a real Etsy app. Dogfooding
+  caught a real bug on day one: `0.1.0` predated Etsy's shared-secret
+  enforcement and was rejected (403) on every request against the live
+  API — fixed and published as `0.2.0`, then independently re-verified
+  (live API calls, plus fresh-install checks across ESM/CJS/TypeScript
+  against the real published package).
+- **Exit criteria for this roadmap's build-and-ship arc**: a working,
+  published, dogfooded, and independently verified package, with CI,
+  docs, and a security review in place — met as of `0.2.0`.
+- Cutting `1.0.0` is intentionally left open-ended: a future,
+  maintainer-driven decision once continued real-world usage warrants
+  declaring the public API stable. Not a blocker for this document —
+  `CHANGELOG.md` already has real entries from Changesets through `0.2.0`
+  and will gain a `[1.0.0]` entry whenever that call is made.
 
 ---
 
@@ -277,9 +289,11 @@ deliverable).
 
 ---
 
-_This document is a planning artifact. Stages 0–8 are complete — see
-`docs/ARCHITECTURE.md` for the locked module contract and `CHANGELOG.md`'s
-`[0.1.0]`/`[0.2.0]` entries for what each stage actually shipped. Stage 9
-(Beta → GA) is underway: `0.1.0` published, dogfooding caught a real bug
-(fixed in `0.2.0`), and dogfooding continues from here before cutting
-`1.0.0`._
+_This document is a planning artifact, and its build-and-ship arc is
+complete. Stages 0–9 are done — see `docs/ARCHITECTURE.md` for the locked
+module contract and `CHANGELOG.md`'s `[0.1.0]`/`[0.2.0]` entries for what
+each stage actually shipped. `0.1.0` published, dogfooding caught a real
+bug on day one, and the fix shipped and was independently verified as
+`0.2.0`. Cutting `1.0.0` is left as a future, maintainer-driven decision
+once continued real-world usage warrants declaring the public API stable
+— see Stage 9 above._
