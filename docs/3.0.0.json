@@ -460,23 +460,6 @@
                                             "inches"
                                         ]
                                     },
-                                    "is_personalizable": {
-                                        "type": "boolean",
-                                        "description": "[DEPRECATED] When true, this listing is personalizable. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
-                                    "personalization_is_required": {
-                                        "type": "boolean",
-                                        "description": "[DEPRECATED] When true, this listing requires personalization. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
-                                    "personalization_char_count_max": {
-                                        "type": "integer",
-                                        "description": "[DEPRECATED] This is an integer value representing the maximum length for the personalization message entered by the buyer. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details.",
-                                        "format": "int64"
-                                    },
-                                    "personalization_instructions": {
-                                        "type": "string",
-                                        "description": "[DEPRECATED] A string representing instructions for the buyer to enter the personalization. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
                                     "production_partner_ids": {
                                         "type": "array",
                                         "description": "An array of unique IDs of production partner ids.",
@@ -496,6 +479,42 @@
                                             "format": "int64",
                                             "minimum": 1
                                         }
+                                    },
+                                    "ecgt_garan_brand": {
+                                        "type": "string",
+                                        "description": "The brand or trademark name for the EU commercial guarantee (required under GPSR/ECGT for eligible EU traders). Maximum 25 characters. See the [Etsy Seller Handbook](https://help.etsy.com/hc/articles/43191692248343) for details. If any one of ecgt_garan_brand, ecgt_garan_model, ecgt_garan_years, or ecgt_garan_guarantee_details is provided and non-empty, all four are required. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_years": {
+                                        "type": "integer",
+                                        "description": "Duration of the EU commercial guarantee in whole years (minimum 3, maximum 99). Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "format": "int64",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_model": {
+                                        "type": "string",
+                                        "description": "The product model or reference number for the EU commercial guarantee label. Maximum 20 characters. Required together with ecgt_garan_brand, ecgt_garan_years, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_guarantee_details": {
+                                        "type": "string",
+                                        "description": "Free-text description of the EU commercial guarantee terms and coverage. Maximum 255 characters. Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_years. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_other_commercial_guarantee_details": {
+                                        "type": "string",
+                                        "description": "Free-text details of any additional commercial guarantee or warranty beyond the primary EU commercial guarantee. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_after_sales_service_info": {
+                                        "type": "string",
+                                        "description": "After-sales service, repairability, or eco-friendly delivery information required under EU GPSR/ECGT regulations. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_software_update_details": {
+                                        "type": "string",
+                                        "description": "Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
                                     },
                                     "is_supply": {
                                         "type": "boolean",
@@ -622,6 +641,7 @@
                                 "inactive",
                                 "sold_out",
                                 "draft",
+                                "removed",
                                 "expired"
                             ],
                             "default": "active"
@@ -2291,11 +2311,11 @@
                     {
                         "name": "max_variations_supported",
                         "in": "query",
-                        "description": "Coming soon: This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
+                        "description": "This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "Coming soon: This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
+                            "description": "This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
                             "enum": ["2", "3"]
                         }
                     }
@@ -4570,23 +4590,6 @@
                                         "format": "int64",
                                         "nullable": true
                                     },
-                                    "is_personalizable": {
-                                        "type": "boolean",
-                                        "description": "[DEPRECATED] When true, this listing is personalizable. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
-                                    "personalization_is_required": {
-                                        "type": "boolean",
-                                        "description": "[DEPRECATED] When true, this listing requires personalization. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
-                                    "personalization_char_count_max": {
-                                        "type": "integer",
-                                        "description": "[DEPRECATED] This is an integer value representing the maximum length for the personalization message entered by the buyer. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details.",
-                                        "format": "int64"
-                                    },
-                                    "personalization_instructions": {
-                                        "type": "string",
-                                        "description": "[DEPRECATED] A string representing instructions for the buyer to enter the personalization. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details."
-                                    },
                                     "state": {
                                         "type": "string",
                                         "description": "When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.",
@@ -4611,6 +4614,42 @@
                                         "description": "An enumerated type string that indicates whether the listing is physical or a digital download.",
                                         "nullable": true,
                                         "enum": ["physical", "download", "both"]
+                                    },
+                                    "ecgt_garan_brand": {
+                                        "type": "string",
+                                        "description": "The brand or trademark name for the EU commercial guarantee (required under GPSR/ECGT for eligible EU traders). Maximum 25 characters. See the [Etsy Seller Handbook](https://help.etsy.com/hc/articles/43191692248343) for details. If any one of ecgt_garan_brand, ecgt_garan_model, ecgt_garan_years, or ecgt_garan_guarantee_details is provided and non-empty, all four are required. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_years": {
+                                        "type": "integer",
+                                        "description": "Duration of the EU commercial guarantee in whole years (minimum 3, maximum 99). Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "format": "int64",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_model": {
+                                        "type": "string",
+                                        "description": "The product model or reference number for the EU commercial guarantee label. Maximum 20 characters. Required together with ecgt_garan_brand, ecgt_garan_years, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_garan_guarantee_details": {
+                                        "type": "string",
+                                        "description": "Free-text description of the EU commercial guarantee terms and coverage. Maximum 255 characters. Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_years. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_other_commercial_guarantee_details": {
+                                        "type": "string",
+                                        "description": "Free-text details of any additional commercial guarantee or warranty beyond the primary EU commercial guarantee. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_after_sales_service_info": {
+                                        "type": "string",
+                                        "description": "After-sales service, repairability, or eco-friendly delivery information required under EU GPSR/ECGT regulations. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
+                                    },
+                                    "ecgt_software_update_details": {
+                                        "type": "string",
+                                        "description": "Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders.",
+                                        "nullable": true
                                     }
                                 }
                             }
@@ -5209,7 +5248,7 @@
         "/v3/application/shops/{shop_id}/listings/{listing_id}/videos": {
             "post": {
                 "operationId": "uploadListingVideo",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nUploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing. ",
+                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nUploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing. By default, the endpoint handles single video uploads, but setting `is_multi_video` to true enables to link up to 2 videos to the same listing.",
                 "tags": ["ShopListing Video"],
                 "parameters": [
                     {
@@ -5234,6 +5273,16 @@
                             "description": "The numeric ID for the [listing](/documentation/reference#tag/ShopListing) associated to this transaction.",
                             "format": "int64",
                             "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "is_multi_video",
+                        "in": "query",
+                        "description": "Indicates whether to handle multiple videos for the listing or maintain the former single video behavior.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Indicates whether to handle multiple videos for the listing or maintain the former single video behavior."
                         }
                     }
                 ],
@@ -6548,7 +6597,7 @@
         "/v3/application/shops/{shop_id}/receipts/{receipt_id}/tracking": {
             "post": {
                 "operationId": "createReceiptShipment",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nSubmits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy",
+                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nSubmits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. **ACCESS RESTRICTION** In regions where Etsy's Preferred Partner Program is enforced, this endpoint is only available to applications that are approved fulfillment partners. Requests from other applications return `403 Forbidden`, even when the API key is valid, the OAuth token has the `transactions_w` scope and other receipt endpoints respond successfully. A request is authorized if the application is a commercial-access application categorized as Fulfillment or Print On Demand, if it is a personal-use application owned by the authenticated seller, or if the seller authorized the application before the Preferred Partner Program launched in their region. If your application doesn't meet these criteria, contact Etsy API support to ask about partner eligibility. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy",
                 "tags": ["Shop Receipt"],
                 "parameters": [
                     {
@@ -7212,6 +7261,28 @@
                             "description": "The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the \"shoes\" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than \"girls' shoes\" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes \"shoes\" or \"girls' shoes\" support access to the \"EU\" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:\"1394\", and `name`:\"38\".",
                             "format": "int64",
                             "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "supports_variations",
+                        "in": "query",
+                        "description": "When `true`, returns properties that support variations. When `false`, returns properties that do not support variations.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "When `true`, returns properties that support variations. When `false`, returns properties that do not support variations.",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "supports_attributes",
+                        "in": "query",
+                        "description": "When `true`, returns properties that support attributes. When `false`, returns properties that do not support attributes.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "When `true`, returns properties that support attributes. When `false`, returns properties that do not support attributes.",
+                            "nullable": true
                         }
                     }
                 ],
@@ -12401,11 +12472,6 @@
                         "type": "string",
                         "description": "A description string of the product for sale in the listing."
                     },
-                    "rich_description": {
-                        "type": "string",
-                        "description": "The seller-authored HTML rich-text description of the product when the listing uses rich text; null for plain-text listings. The plain-text `description` field is always populated. This value is HTML and consumers MUST sanitize it before rendering it in any HTML context.",
-                        "nullable": true
-                    },
                     "state": {
                         "type": "string",
                         "description": "When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.",
@@ -12414,6 +12480,7 @@
                             "inactive",
                             "sold_out",
                             "draft",
+                            "removed",
                             "expired"
                         ]
                     },
@@ -12686,6 +12753,47 @@
                     "suggested_title": {
                         "type": "string",
                         "description": "A title string suggested by Etsy. Only available for a user's own listings, when allow_suggested_title param is present, and when a shop's language setting is English. Not all listings will have suggestions.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_brand": {
+                        "type": "string",
+                        "description": "Brand or trademark name for the EU commercial guarantee label.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_years": {
+                        "type": "integer",
+                        "description": "Duration of the commercial guarantee in whole years (3\u201399).",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "ecgt_garan_model": {
+                        "type": "string",
+                        "description": "Product model or reference number for the EU commercial guarantee label.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_guarantee_details": {
+                        "type": "string",
+                        "description": "Free-text details of the commercial guarantee.",
+                        "nullable": true
+                    },
+                    "ecgt_other_commercial_guarantee_details": {
+                        "type": "string",
+                        "description": "Free-text details of any additional commercial guarantee or warranty.",
+                        "nullable": true
+                    },
+                    "ecgt_after_sales_service_info": {
+                        "type": "string",
+                        "description": "After-sales service, repairability, or eco-friendly delivery information.",
+                        "nullable": true
+                    },
+                    "ecgt_software_update_details": {
+                        "type": "string",
+                        "description": "For digital or software listings: software update availability and duration.",
+                        "nullable": true
+                    },
+                    "ecgt_commercial_guarantee_enabled": {
+                        "type": "boolean",
+                        "description": "True when all four commercial guarantee fields are filled. Read-only; derived server-side.",
                         "nullable": true
                     }
                 }
@@ -12848,11 +12956,6 @@
                         "type": "string",
                         "description": "A description string of the product for sale in the listing."
                     },
-                    "rich_description": {
-                        "type": "string",
-                        "description": "The seller-authored HTML rich-text description of the product when the listing uses rich text; null for plain-text listings. The plain-text `description` field is always populated. This value is HTML and consumers MUST sanitize it before rendering it in any HTML context.",
-                        "nullable": true
-                    },
                     "state": {
                         "type": "string",
                         "description": "When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.",
@@ -12861,6 +12964,7 @@
                             "inactive",
                             "sold_out",
                             "draft",
+                            "removed",
                             "expired"
                         ]
                     },
@@ -13133,6 +13237,47 @@
                     "suggested_title": {
                         "type": "string",
                         "description": "A title string suggested by Etsy. Only available for a user's own listings, when allow_suggested_title param is present, and when a shop's language setting is English. Not all listings will have suggestions.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_brand": {
+                        "type": "string",
+                        "description": "Brand or trademark name for the EU commercial guarantee label.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_years": {
+                        "type": "integer",
+                        "description": "Duration of the commercial guarantee in whole years (3\u201399).",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "ecgt_garan_model": {
+                        "type": "string",
+                        "description": "Product model or reference number for the EU commercial guarantee label.",
+                        "nullable": true
+                    },
+                    "ecgt_garan_guarantee_details": {
+                        "type": "string",
+                        "description": "Free-text details of the commercial guarantee.",
+                        "nullable": true
+                    },
+                    "ecgt_other_commercial_guarantee_details": {
+                        "type": "string",
+                        "description": "Free-text details of any additional commercial guarantee or warranty.",
+                        "nullable": true
+                    },
+                    "ecgt_after_sales_service_info": {
+                        "type": "string",
+                        "description": "After-sales service, repairability, or eco-friendly delivery information.",
+                        "nullable": true
+                    },
+                    "ecgt_software_update_details": {
+                        "type": "string",
+                        "description": "For digital or software listings: software update availability and duration.",
+                        "nullable": true
+                    },
+                    "ecgt_commercial_guarantee_enabled": {
+                        "type": "boolean",
+                        "description": "True when all four commercial guarantee fields are filled. Read-only; derived server-side.",
                         "nullable": true
                     },
                     "shipping_profile": {
@@ -14807,6 +14952,20 @@
                         "description": "[Personalization only] The ID of the original personalization question.",
                         "format": "int64",
                         "nullable": true
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "description": "MIME type of an uploaded personalization file. Null for non-upload questions.",
+                        "nullable": true,
+                        "enum": [
+                            "image/jpeg",
+                            "image/png",
+                            "image/gif",
+                            "image/svg+xml",
+                            "image/heif",
+                            "image/heic",
+                            "application/pdf"
+                        ]
                     }
                 }
             },

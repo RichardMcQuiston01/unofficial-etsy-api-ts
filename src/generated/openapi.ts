@@ -717,7 +717,7 @@ export interface paths {
     /**
      * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
      *
-     *     Uploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing.
+     *     Uploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing. By default, the endpoint handles single video uploads, but setting `is_multi_video` to true enables to link up to 2 videos to the same listing.
      */
     post: operations["uploadListingVideo"];
     delete?: never;
@@ -932,7 +932,7 @@ export interface paths {
     /**
      * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
      *
-     *     Submits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy
+     *     Submits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. **ACCESS RESTRICTION** In regions where Etsy's Preferred Partner Program is enforced, this endpoint is only available to applications that are approved fulfillment partners. Requests from other applications return `403 Forbidden`, even when the API key is valid, the OAuth token has the `transactions_w` scope and other receipt endpoints respond successfully. A request is authorized if the application is a commercial-access application categorized as Fulfillment or Print On Demand, if it is a personal-use application owned by the authenticated seller, or if the seller authorized the application before the Preferred Partner Program launched in their region. If your application doesn't meet these criteria, contact Etsy API support to ask about partner eligibility. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy
      */
     post: operations["createReceiptShipment"];
     delete?: never;
@@ -1882,13 +1882,11 @@ export interface components {
       title?: string;
       /** @description A description string of the product for sale in the listing. */
       description?: string;
-      /** @description The seller-authored HTML rich-text description of the product when the listing uses rich text; null for plain-text listings. The plain-text `description` field is always populated. This value is HTML and consumers MUST sanitize it before rendering it in any HTML context. */
-      rich_description?: string | null;
       /**
        * @description When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.
        * @enum {string}
        */
-      state?: "active" | "inactive" | "sold_out" | "draft" | "expired";
+      state?: "active" | "inactive" | "sold_out" | "draft" | "removed" | "expired";
       /**
        * Format: int64
        * @description The listing's creation time, in epoch seconds.
@@ -2073,6 +2071,25 @@ export interface components {
       readiness_state_id?: number | null;
       /** @description A title string suggested by Etsy. Only available for a user's own listings, when allow_suggested_title param is present, and when a shop's language setting is English. Not all listings will have suggestions. */
       suggested_title?: string | null;
+      /** @description Brand or trademark name for the EU commercial guarantee label. */
+      ecgt_garan_brand?: string | null;
+      /**
+       * Format: int64
+       * @description Duration of the commercial guarantee in whole years (3–99).
+       */
+      ecgt_garan_years?: number | null;
+      /** @description Product model or reference number for the EU commercial guarantee label. */
+      ecgt_garan_model?: string | null;
+      /** @description Free-text details of the commercial guarantee. */
+      ecgt_garan_guarantee_details?: string | null;
+      /** @description Free-text details of any additional commercial guarantee or warranty. */
+      ecgt_other_commercial_guarantee_details?: string | null;
+      /** @description After-sales service, repairability, or eco-friendly delivery information. */
+      ecgt_after_sales_service_info?: string | null;
+      /** @description For digital or software listings: software update availability and duration. */
+      ecgt_software_update_details?: string | null;
+      /** @description True when all four commercial guarantee fields are filled. Read-only; derived server-side. */
+      ecgt_commercial_guarantee_enabled?: boolean | null;
     };
     /** @description A representation of an amount of money. */
     Money: {
@@ -2169,13 +2186,11 @@ export interface components {
       title?: string;
       /** @description A description string of the product for sale in the listing. */
       description?: string;
-      /** @description The seller-authored HTML rich-text description of the product when the listing uses rich text; null for plain-text listings. The plain-text `description` field is always populated. This value is HTML and consumers MUST sanitize it before rendering it in any HTML context. */
-      rich_description?: string | null;
       /**
        * @description When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.
        * @enum {string}
        */
-      state?: "active" | "inactive" | "sold_out" | "draft" | "expired";
+      state?: "active" | "inactive" | "sold_out" | "draft" | "removed" | "expired";
       /**
        * Format: int64
        * @description The listing's creation time, in epoch seconds.
@@ -2360,6 +2375,25 @@ export interface components {
       readiness_state_id?: number | null;
       /** @description A title string suggested by Etsy. Only available for a user's own listings, when allow_suggested_title param is present, and when a shop's language setting is English. Not all listings will have suggestions. */
       suggested_title?: string | null;
+      /** @description Brand or trademark name for the EU commercial guarantee label. */
+      ecgt_garan_brand?: string | null;
+      /**
+       * Format: int64
+       * @description Duration of the commercial guarantee in whole years (3–99).
+       */
+      ecgt_garan_years?: number | null;
+      /** @description Product model or reference number for the EU commercial guarantee label. */
+      ecgt_garan_model?: string | null;
+      /** @description Free-text details of the commercial guarantee. */
+      ecgt_garan_guarantee_details?: string | null;
+      /** @description Free-text details of any additional commercial guarantee or warranty. */
+      ecgt_other_commercial_guarantee_details?: string | null;
+      /** @description After-sales service, repairability, or eco-friendly delivery information. */
+      ecgt_after_sales_service_info?: string | null;
+      /** @description For digital or software listings: software update availability and duration. */
+      ecgt_software_update_details?: string | null;
+      /** @description True when all four commercial guarantee fields are filled. Read-only; derived server-side. */
+      ecgt_commercial_guarantee_enabled?: boolean | null;
       /** @description An array of data representing the shipping profile resource. */
       shipping_profile?: components["schemas"]["ShopShippingProfile"] | null;
       /** @description Represents a single user of the site */
@@ -3164,6 +3198,19 @@ export interface components {
        * @description [Personalization only] The ID of the original personalization question.
        */
       question_id?: number | null;
+      /**
+       * @description MIME type of an uploaded personalization file. Null for non-upload questions.
+       * @enum {string|null}
+       */
+      mime_type?:
+        | "image/jpeg"
+        | "image/png"
+        | "image/gif"
+        | "image/svg+xml"
+        | "image/heif"
+        | "image/heic"
+        | "application/pdf"
+        | null;
     };
     /** @description Represents several ListingVariationImages. */
     ListingVariationImages: {
@@ -4325,7 +4372,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com. */
-        state?: "active" | "inactive" | "sold_out" | "draft" | "expired";
+        state?: "active" | "inactive" | "sold_out" | "draft" | "removed" | "expired";
         /** @description The maximum number of results to return. */
         limit?: number;
         /** @description The number of records to skip before selecting the first result. */
@@ -4530,21 +4577,27 @@ export interface operations {
            * @enum {string|null}
            */
           item_dimensions_unit?: "in" | "ft" | "mm" | "cm" | "m" | "yd" | "inches" | null;
-          /** @description [DEPRECATED] When true, this listing is personalizable. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          is_personalizable?: boolean;
-          /** @description [DEPRECATED] When true, this listing requires personalization. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          personalization_is_required?: boolean;
-          /**
-           * Format: int64
-           * @description [DEPRECATED] This is an integer value representing the maximum length for the personalization message entered by the buyer. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details.
-           */
-          personalization_char_count_max?: number;
-          /** @description [DEPRECATED] A string representing instructions for the buyer to enter the personalization. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          personalization_instructions?: string;
           /** @description An array of unique IDs of production partner ids. */
           production_partner_ids?: number[] | null;
           /** @description An array of numeric image IDs of the images in a listing, which can include up to 20 images. */
           image_ids?: number[] | null;
+          /** @description The brand or trademark name for the EU commercial guarantee (required under GPSR/ECGT for eligible EU traders). Maximum 25 characters. See the [Etsy Seller Handbook](https://help.etsy.com/hc/articles/43191692248343) for details. If any one of ecgt_garan_brand, ecgt_garan_model, ecgt_garan_years, or ecgt_garan_guarantee_details is provided and non-empty, all four are required. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_brand?: string | null;
+          /**
+           * Format: int64
+           * @description Duration of the EU commercial guarantee in whole years (minimum 3, maximum 99). Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.
+           */
+          ecgt_garan_years?: number | null;
+          /** @description The product model or reference number for the EU commercial guarantee label. Maximum 20 characters. Required together with ecgt_garan_brand, ecgt_garan_years, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_model?: string | null;
+          /** @description Free-text description of the EU commercial guarantee terms and coverage. Maximum 255 characters. Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_years. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_guarantee_details?: string | null;
+          /** @description Free-text details of any additional commercial guarantee or warranty beyond the primary EU commercial guarantee. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_other_commercial_guarantee_details?: string | null;
+          /** @description After-sales service, repairability, or eco-friendly delivery information required under EU GPSR/ECGT regulations. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_after_sales_service_info?: string | null;
+          /** @description Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders. */
+          ecgt_software_update_details?: string | null;
           /** @description When true, tags the listing as a supply product, else indicates that it's a finished product. Helps buyers locate the listing under the Supplies heading. Requires 'who_made' and 'when_made'. */
           is_supply?: boolean;
           /** @description When true, a buyer may contact the seller for a customized order. The default value is true when a shop accepts custom orders. Does not apply to shops that do not accept custom orders. */
@@ -5562,7 +5615,7 @@ export interface operations {
   updateListingInventory: {
     parameters: {
       query?: {
-        /** @description Coming soon: This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support. */
+        /** @description This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support. */
         max_variations_supported?: "2" | "3";
       };
       header?: never;
@@ -6969,17 +7022,6 @@ export interface operations {
            * @description The positive non-zero numeric position in the featured listings of the shop, with rank 1 listings appearing in the left-most position in featured listing on a shop's home page.
            */
           featured_rank?: number | null;
-          /** @description [DEPRECATED] When true, this listing is personalizable. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          is_personalizable?: boolean;
-          /** @description [DEPRECATED] When true, this listing requires personalization. The default value is false. NOTE: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          personalization_is_required?: boolean;
-          /**
-           * Format: int64
-           * @description [DEPRECATED] This is an integer value representing the maximum length for the personalization message entered by the buyer. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details.
-           */
-          personalization_char_count_max?: number;
-          /** @description [DEPRECATED] A string representing instructions for the buyer to enter the personalization. Will only change if is_personalizable is 'true'. Note: This field will be removed on Apr. 9th, 2026. See https://developers.etsy.com/documentation/tutorials/personalization-migration for migration details. */
-          personalization_instructions?: string;
           /**
            * @description When _updating_ a listing, this value can be either `active` or `inactive`. Note: Setting a `draft` listing to `active` will also publish the listing on etsy.com and requires that the listing have an image set. Setting a `sold_out` listing to active will update the quantity to 1 and renew the listing on etsy.com.
            * @enum {string}
@@ -6994,6 +7036,23 @@ export interface operations {
            * @enum {string|null}
            */
           type?: "physical" | "download" | "both" | null;
+          /** @description The brand or trademark name for the EU commercial guarantee (required under GPSR/ECGT for eligible EU traders). Maximum 25 characters. See the [Etsy Seller Handbook](https://help.etsy.com/hc/articles/43191692248343) for details. If any one of ecgt_garan_brand, ecgt_garan_model, ecgt_garan_years, or ecgt_garan_guarantee_details is provided and non-empty, all four are required. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_brand?: string | null;
+          /**
+           * Format: int64
+           * @description Duration of the EU commercial guarantee in whole years (minimum 3, maximum 99). Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders.
+           */
+          ecgt_garan_years?: number | null;
+          /** @description The product model or reference number for the EU commercial guarantee label. Maximum 20 characters. Required together with ecgt_garan_brand, ecgt_garan_years, and ecgt_garan_guarantee_details. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_model?: string | null;
+          /** @description Free-text description of the EU commercial guarantee terms and coverage. Maximum 255 characters. Required together with ecgt_garan_brand, ecgt_garan_model, and ecgt_garan_years. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_garan_guarantee_details?: string | null;
+          /** @description Free-text details of any additional commercial guarantee or warranty beyond the primary EU commercial guarantee. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_other_commercial_guarantee_details?: string | null;
+          /** @description After-sales service, repairability, or eco-friendly delivery information required under EU GPSR/ECGT regulations. Maximum 255 characters. Silently ignored for digital listings and for sellers who are not eligible EU traders. */
+          ecgt_after_sales_service_info?: string | null;
+          /** @description Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders. */
+          ecgt_software_update_details?: string | null;
         };
       };
     };
@@ -7418,7 +7477,10 @@ export interface operations {
   };
   uploadListingVideo: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Indicates whether to handle multiple videos for the listing or maintain the former single video behavior. */
+        is_multi_video?: boolean;
+      };
       header?: never;
       path: {
         /** @description The unique positive non-zero numeric ID for an Etsy Shop. */
@@ -8614,7 +8676,12 @@ export interface operations {
   };
   getPropertiesByTaxonomyId: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description When `true`, returns properties that support variations. When `false`, returns properties that do not support variations. */
+        supports_variations?: boolean | null;
+        /** @description When `true`, returns properties that support attributes. When `false`, returns properties that do not support attributes. */
+        supports_attributes?: boolean | null;
+      };
       header?: never;
       path: {
         /** @description The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the "shoes" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than "girls' shoes" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes "shoes" or "girls' shoes" support access to the "EU" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:"1394", and `name`:"38". */
