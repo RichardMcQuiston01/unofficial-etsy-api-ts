@@ -3,6 +3,7 @@ import type {
   DeleteListingVideoResponse,
   GetListingVideoResponse,
   GetListingVideosResponse,
+  UploadListingVideoParams,
   UploadListingVideoRequestBody,
   UploadListingVideoResponse,
 } from "../../generated/operations.js";
@@ -44,16 +45,23 @@ export class ListingVideosResource {
     });
   }
 
-  /** uploadListingVideo: POST /v3/application/shops/{shop_id}/listings/{listing_id}/videos [auth=oauth] */
+  /**
+   * uploadListingVideo: POST /v3/application/shops/{shop_id}/listings/{listing_id}/videos [auth=oauth]
+   *
+   * By default Etsy keeps its single-video behaviour. Pass
+   * `{ is_multi_video: true }` as `params` to link up to 2 videos to the listing.
+   */
   upload(
     shopId: number,
     listingId: number,
     body: UploadListingVideoInput,
+    params?: UploadListingVideoParams["query"],
   ): Promise<UploadListingVideoResponse> {
     return this.#http.request<UploadListingVideoResponse>({
       method: "POST",
       path: "/v3/application/shops/{shop_id}/listings/{listing_id}/videos",
       pathParams: { shop_id: shopId, listing_id: listingId },
+      ...(params ? { query: params } : {}),
       body: { kind: "multipart", data: body },
       auth: "oauth",
       operationId: "uploadListingVideo",

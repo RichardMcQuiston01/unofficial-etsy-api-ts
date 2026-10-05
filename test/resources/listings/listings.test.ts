@@ -631,6 +631,32 @@ describe("ListingsResource.videos", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("upload() sends is_multi_video as a query parameter alongside the multipart body", async () => {
+    const blob = new Blob(["fake-video-bytes"], { type: "video/mp4" });
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      const requested = new URL(url);
+      expect(requested.pathname).toBe("/v3/application/shops/1/listings/2/videos");
+      expect(requested.searchParams.get("is_multi_video")).toBe("true");
+      expect(init?.body).toBeInstanceOf(FormData);
+      expect((init?.body as FormData).get("name")).toBe("demo.mp4");
+      return jsonResponse({ video_id: 2 }, { status: 201 });
+    });
+    const { resource } = makeResource(
+      fetchMock as unknown as typeof fetch,
+      fakeOAuth("test-token"),
+    );
+
+    const result = await resource.videos.upload(
+      1,
+      2,
+      { video: blob, name: "demo.mp4" },
+      { is_multi_video: true },
+    );
+
+    expect(result).toEqual({ video_id: 2 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("get() reads a single video via GET with apiKey auth", async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(new URL(url).toString()).toBe(
