@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-05
+
+### Added
+
+- `listings.videos.upload()` takes an optional fourth argument for the
+  operation's query parameters: `{ is_multi_video: true }` links up to 2
+  videos to a listing instead of Etsy's default single-video behaviour.
+- From Etsy's refreshed spec (see Changed): `supports_variations` and
+  `supports_attributes` filters on `getPropertiesByTaxonomyId`; the EU
+  commercial-guarantee (`ecgt_*`) fields on `createDraftListing`,
+  `updateListing`, `ShopListing` and `ShopListingWithAssociations`; a
+  `"removed"` listing state on `getListingsByShop` and listing responses; and
+  `mime_type` on `TransactionVariations`.
+
+### Changed
+
+- `docs/3.0.0.json` is refreshed to Etsy's current Open API v3 spec, and
+  `src/generated/` is regenerated from it (`npm run codegen`). Same 105
+  operations.
+
+### Removed
+
+- **Breaking (types only), following Etsy:** the deprecated
+  `is_personalizable`, `personalization_is_required`,
+  `personalization_char_count_max` and `personalization_instructions` request
+  fields on `createDraftListing` / `updateListing` (Etsy retired them on
+  9 April 2026; use the listing personalization endpoints), and
+  `rich_description` on listing responses, which Etsy's current spec no
+  longer lists.
+
 ## [0.2.0] - 2026-08-18
 
 ### Changed
@@ -312,6 +342,7 @@ invocation` in spec-compliant browsers (the receiver becomes the
   tooling state (e.g. isolated git worktrees for parallel Stage 4
   work) that shouldn't be tracked in the repo.
 
-[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/releases/tag/v0.1.0
