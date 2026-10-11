@@ -52,21 +52,34 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-/** Combines an optional caller signal with a fresh per-attempt timeout signal.
- *  Avoids relying on AbortSignal.any(), which isn't available on Node 18. */
-function combineSignals(callerSignal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  if (!callerSignal) return timeoutSignal;
-
+/**
+ * Per-attempt signal combining an optional caller signal with a timeout.
+ * `dispose()` must run when the attempt settles: it clears the timer and
+ * detaches the caller-signal listener, so neither outlives the request.
+ */
+function createAttemptSignal(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): { signal: AbortSignal; dispose: () => void } {
   const controller = new AbortController();
-  const abortFrom = (signal: AbortSignal) => controller.abort(signal.reason as unknown);
-  if (callerSignal.aborted) abortFrom(callerSignal);
-  else if (timeoutSignal.aborted) abortFrom(timeoutSignal);
-  else {
-    callerSignal.addEventListener("abort", () => abortFrom(callerSignal), { once: true });
-    timeoutSignal.addEventListener("abort", () => abortFrom(timeoutSignal), { once: true });
+  if (callerSignal?.aborted) {
+    controller.abort(callerSignal.reason as unknown);
+    return { signal: controller.signal, dispose: () => undefined };
   }
-  return controller.signal;
+
+  const onCallerAbort = (): void => controller.abort(callerSignal?.reason as unknown);
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, "TimeoutError"));
+  }, timeoutMs);
+  callerSignal?.addEventListener("abort", onCallerAbort, { once: true });
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+    },
+  };
 }
 
 function parseIntHeader(headers: Headers, name: string): number | undefined {
@@ -250,78 +263,122 @@ export class EtsyHttpClient {
     const headers = new Headers();
     headers.set("x-api-key", `${this.#apiKey}:${this.#apiKeySecret}`);
 
-    if (options.auth === "oauth") {
-      if (!this.#auth) {
-        throw new Error(
-          `EtsyHttpClient: operation "${options.operationId}" requires OAuth, but this ` +
-            "client was constructed without `auth` in EtsyClientConfig.",
-        );
-      }
-      const accessToken = await this.#auth.getValidAccessToken();
-      headers.set("Authorization", `Bearer ${accessToken}`);
+    if (options.auth === "oauth" && !this.#auth) {
+      throw new Error(
+        `EtsyHttpClient: operation "${options.operationId}" requires OAuth, but this ` +
+          "client was constructed without `auth` in EtsyClientConfig.",
+      );
     }
 
     const body = this.#buildBody(options.body, headers);
-
-    return this.#send<T>(
-      url,
-      options.method,
-      headers,
-      body,
-      options.operationId,
-      options.signal,
-      0,
-    );
+    return this.#send<T>(url, options, headers, body);
   }
 
+  /**
+   * Attempt loop. The access token is re-read before every attempt so a long
+   * 429 backoff can't send an expired one; a 401 on an oauth call refreshes
+   * once (not counted against maxRetries) and retries with the new token.
+   */
   async #send<T>(
     url: string,
-    method: string,
+    options: RequestOptions,
     headers: Headers,
     body: FetchBody | undefined,
-    operationId: string,
-    callerSignal: AbortSignal | undefined,
-    attempt: number,
   ): Promise<T> {
+    const useOAuth = options.auth === "oauth";
+    let rateLimitRetries = 0;
+    let refreshedAfter401 = false;
+    const auth = useOAuth ? this.#auth : undefined;
+    let accessToken = auth ? await auth.getValidAccessToken() : undefined;
+
+    for (;;) {
+      if (accessToken !== undefined) headers.set("Authorization", `Bearer ${accessToken}`);
+
+      const outcome = await this.#attempt<T>(
+        url,
+        options,
+        headers,
+        body,
+        rateLimitRetries,
+        useOAuth && !refreshedAfter401,
+      );
+
+      if (outcome.kind === "done") return outcome.value;
+
+      if (outcome.kind === "unauthorized") {
+        refreshedAfter401 = true;
+        // A 401 is only surfaced as "unauthorized" for oauth calls, so a token was sent.
+        accessToken = await auth?.refreshAfterRejection(accessToken as string);
+        continue;
+      }
+
+      await sleep(outcome.delayMs, options.signal);
+      rateLimitRetries += 1;
+      accessToken = await auth?.getValidAccessToken();
+    }
+  }
+
+  async #attempt<T>(
+    url: string,
+    options: RequestOptions,
+    headers: Headers,
+    body: FetchBody | undefined,
+    attempt: number,
+    canRefresh: boolean,
+  ): Promise<
+    { kind: "done"; value: T } | { kind: "retry"; delayMs: number } | { kind: "unauthorized" }
+  > {
     // A fresh timeout window per attempt — a slow-but-eventually-429 server
     // doesn't get to consume the whole budget on one hung attempt.
-    const signal = combineSignals(callerSignal, this.#timeoutMs);
-    const response = await this.#fetch(url, {
-      method,
-      headers,
-      signal,
-      // x-api-key is not stripped by fetch on cross-origin redirects; never follow one.
-      redirect: "error",
-      ...(body ? { body } : {}),
-    });
-
-    const rateLimit = parseRateLimitHeaders(response.headers);
-    if (rateLimit) this.#lastRateLimit = rateLimit;
-
-    if (response.status === 429 && attempt < this.#maxRetries) {
-      const delayMs = computeRetryDelayMs(response, attempt, this.#maxBackoffMs);
-      await sleep(delayMs, callerSignal);
-      return this.#send<T>(url, method, headers, body, operationId, callerSignal, attempt + 1);
-    }
-
-    if (!response.ok) {
-      const etsyError = await extractEtsyError(response);
-      // Prefer this response's own rate-limit snapshot over the persisted
-      // one — #lastRateLimit may be stale from an earlier, unrelated request.
-      const rateLimitForError = rateLimit ?? this.#lastRateLimit;
-      throw new EtsyApiError({
-        status: response.status,
-        etsyError,
-        operationId,
-        ...(rateLimitForError ? { rateLimit: rateLimitForError } : {}),
+    const { signal, dispose } = createAttemptSignal(options.signal, this.#timeoutMs);
+    try {
+      const response = await this.#fetch(url, {
+        method: options.method,
+        headers,
+        signal,
+        // x-api-key is not stripped by fetch on cross-origin redirects; never follow one.
+        redirect: "error",
+        ...(body ? { body } : {}),
       });
-    }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
+      const rateLimit = parseRateLimitHeaders(response.headers);
+      if (rateLimit) this.#lastRateLimit = rateLimit;
 
-    return (await response.json()) as T;
+      if (response.status === 429 && attempt < this.#maxRetries) {
+        // Undici holds the connection until the body is consumed or cancelled.
+        await response.body?.cancel();
+        return {
+          kind: "retry",
+          delayMs: computeRetryDelayMs(response, attempt, this.#maxBackoffMs),
+        };
+      }
+
+      if (response.status === 401 && canRefresh) {
+        await response.body?.cancel();
+        return { kind: "unauthorized" };
+      }
+
+      if (!response.ok) {
+        const etsyError = await extractEtsyError(response);
+        // Prefer this response's own rate-limit snapshot over the persisted
+        // one — #lastRateLimit may be stale from an earlier, unrelated request.
+        const rateLimitForError = rateLimit ?? this.#lastRateLimit;
+        throw new EtsyApiError({
+          status: response.status,
+          etsyError,
+          operationId: options.operationId,
+          ...(rateLimitForError ? { rateLimit: rateLimitForError } : {}),
+        });
+      }
+
+      if (response.status === 204) {
+        return { kind: "done", value: undefined as T };
+      }
+
+      return { kind: "done", value: (await response.json()) as T };
+    } finally {
+      dispose();
+    }
   }
 
   #buildUrl(options: RequestOptions): string {

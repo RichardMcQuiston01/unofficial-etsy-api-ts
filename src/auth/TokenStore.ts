@@ -26,6 +26,10 @@ export interface TokenStore {
   save(tokens: TokenSet): Promise<void> | void;
 }
 
+function copyTokens(tokens: TokenSet): TokenSet {
+  return { ...tokens, scope: [...tokens.scope] };
+}
+
 /**
  * Default TokenStore. No persistence across process restarts by design —
  * consumers needing durability (disk, DB, KV) provide their own TokenStore.
@@ -33,11 +37,12 @@ export interface TokenStore {
 export class InMemoryTokenStore implements TokenStore {
   #tokens: TokenSet | null = null;
 
+  /** Returns a copy, so callers mutating the result can't corrupt the store. */
   load(): TokenSet | null {
-    return this.#tokens;
+    return this.#tokens ? copyTokens(this.#tokens) : null;
   }
 
   save(tokens: TokenSet): void {
-    this.#tokens = tokens;
+    this.#tokens = copyTokens(tokens);
   }
 }
