@@ -37,6 +37,7 @@ import { ListingPersonalizationResource } from "./personalization.js";
 import { ListingTranslationsResource } from "./translations.js";
 import { ListingVariationImagesResource } from "./variationImages.js";
 import { ListingVideosResource } from "./videos.js";
+import { toQuery } from "../internal.js";
 
 export { ListingFilesResource } from "./files.js";
 export { ListingImagesResource } from "./images.js";
@@ -87,7 +88,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/listings/{listing_id}",
       pathParams: { listing_id: listingId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getListing",
     });
@@ -129,7 +130,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/listings",
       pathParams: { shop_id: shopId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingsByShop",
     });
@@ -142,7 +143,7 @@ export class ListingsResource {
     return this.#http.request<FindAllListingsActiveResponse>({
       method: "GET",
       path: "/v3/application/listings/active",
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "findAllListingsActive",
     });
@@ -157,7 +158,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/listings/active",
       pathParams: { shop_id: shopId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "findAllActiveListingsByShop",
     });
@@ -172,7 +173,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/listings/featured",
       pathParams: { shop_id: shopId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getFeaturedListingsByShop",
     });
@@ -185,7 +186,7 @@ export class ListingsResource {
     return this.#http.request<GetListingsByListingIdsResponse>({
       method: "GET",
       path: "/v3/application/listings/batch",
-      query: params,
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getListingsByListingIds",
     });
@@ -198,7 +199,7 @@ export class ListingsResource {
     return this.#http.request<GetListingsShippingByListingIdsResponse>({
       method: "GET",
       path: "/v3/application/listings/batch/shipping",
-      query: params,
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingsShippingByListingIds",
     });
@@ -214,7 +215,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/receipts/{receipt_id}/listings",
       pathParams: { shop_id: shopId, receipt_id: receiptId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingsByShopReceipt",
     });
@@ -230,7 +231,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/policies/return/{return_policy_id}/listings",
       pathParams: { shop_id: shopId, return_policy_id: returnPolicyId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingsByShopReturnPolicy",
     });
@@ -249,7 +250,7 @@ export class ListingsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/shop-sections/listings",
       pathParams: { shop_id: shopId },
-      query: params,
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getListingsByShopSectionId",
     });

@@ -8,7 +8,7 @@ import type {
   GetShopReceiptTransactionsByShopParams,
   GetShopReceiptTransactionsByShopResponse,
 } from "../../generated/operations.js";
-import { toQuery } from "./internal.js";
+import { toQuery } from "../internal.js";
 
 /** Tag: `Shop Receipt Transactions`. */
 export class ShopReceiptTransactionsResource {

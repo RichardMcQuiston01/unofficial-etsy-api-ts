@@ -6,6 +6,7 @@ import type {
   UpdateListingPersonalizationRequestBody,
   UpdateListingPersonalizationResponse,
 } from "../../generated/operations.js";
+import { toQuery } from "../internal.js";
 
 /** `ShopListing Personalization` operations, nested under `listings.personalization`. */
 export class ListingPersonalizationResource {
@@ -37,18 +38,11 @@ export class ListingPersonalizationResource {
     body: UpdateListingPersonalizationRequestBody,
     query?: UpdateListingPersonalizationParams["query"],
   ): Promise<UpdateListingPersonalizationResponse> {
-    // The generated query type allows `boolean | null`; EtsyHttpClient's
-    // RequestOptions.query value union has no `null` member (only
-    // string/number/boolean/array/undefined), so a `null` here is normalized
-    // to "omit the param" rather than forwarded as a literal null.
-    const supportsMultiple = query?.supports_multiple_personalization_questions;
     return this.#http.request<UpdateListingPersonalizationResponse>({
       method: "POST",
       path: "/v3/application/shops/{shop_id}/listings/{listing_id}/personalization",
       pathParams: { shop_id: shopId, listing_id: listingId },
-      ...(supportsMultiple !== undefined && supportsMultiple !== null
-        ? { query: { supports_multiple_personalization_questions: supportsMultiple } }
-        : {}),
+      query: toQuery(query),
       body: { kind: "json", data: body },
       auth: "oauth",
       operationId: "updateListingPersonalization",

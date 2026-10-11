@@ -7,6 +7,7 @@ import type {
   UploadListingVideoRequestBody,
   UploadListingVideoResponse,
 } from "../../generated/operations.js";
+import { toQuery } from "../internal.js";
 
 /** UploadListingVideoRequestBody with `video` corrected to `Blob | null` — the generated
  *  type says `string | null` (openapi-typescript's mapping for `format: binary`), but the
@@ -61,7 +62,7 @@ export class ListingVideosResource {
       method: "POST",
       path: "/v3/application/shops/{shop_id}/listings/{listing_id}/videos",
       pathParams: { shop_id: shopId, listing_id: listingId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       body: { kind: "multipart", data: body },
       auth: "oauth",
       operationId: "uploadListingVideo",

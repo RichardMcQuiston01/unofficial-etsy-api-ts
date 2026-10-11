@@ -1175,3 +1175,22 @@ describe("EtsyHttpClient — 429 retry body and token handling", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("EtsyHttpClient — null query values", () => {
+  it('omits null and undefined query values instead of sending the string "null"', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) => jsonResponse({}));
+    const client = new EtsyHttpClient({
+      apiKey: "k",
+      apiKeySecret: "s",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      query: { a: null, b: undefined, c: 1 },
+      auth: "apiKey",
+      operationId: "ping",
+    });
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).search).toBe("?c=1");
+  });
+});

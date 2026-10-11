@@ -12,6 +12,7 @@ import type {
 } from "../../generated/operations.js";
 import { ShopShippingProfileDestinationsResource } from "./shippingProfileDestinations.js";
 import { ShopShippingProfileUpgradesResource } from "./shippingProfileUpgrades.js";
+import { toQuery } from "../internal.js";
 
 const BASE_PATH = "/v3/application/shops/{shop_id}/shipping-profiles";
 const ITEM_PATH = "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}";
@@ -40,7 +41,7 @@ export class ShopShippingProfilesResource {
     return this.#http.request<GetShippingCarriersResponse>({
       method: "GET",
       path: "/v3/application/shipping-carriers",
-      query: params,
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getShippingCarriers",
     });

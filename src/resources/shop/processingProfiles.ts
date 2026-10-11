@@ -9,6 +9,7 @@ import type {
   UpdateShopReadinessStateDefinitionRequestBody,
   UpdateShopReadinessStateDefinitionResponse,
 } from "../../generated/operations.js";
+import { toQuery } from "../internal.js";
 
 const BASE_PATH = "/v3/application/shops/{shop_id}/readiness-state-definitions";
 const ITEM_PATH =
@@ -50,7 +51,7 @@ export class ShopProcessingProfilesResource {
       method: "GET",
       path: BASE_PATH,
       pathParams: { shop_id: shopId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getShopReadinessStateDefinitions",
     });

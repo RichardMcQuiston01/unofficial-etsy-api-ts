@@ -4,7 +4,7 @@ import type {
   GetShopPaymentAccountLedgerEntriesResponse,
   GetShopPaymentAccountLedgerEntryResponse,
 } from "../../generated/operations.js";
-import { toQuery } from "./internal.js";
+import { toQuery } from "../internal.js";
 
 /** Tag: `Ledger Entry`. */
 export class LedgerEntriesResource {

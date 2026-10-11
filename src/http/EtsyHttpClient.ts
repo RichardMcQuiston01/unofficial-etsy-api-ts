@@ -41,7 +41,8 @@ export interface RequestOptions {
   /** Template path, e.g. "/v3/application/shops/{shop_id}/listings". */
   path: string;
   pathParams?: Record<string, string | number>;
-  query?: Record<string, string | number | boolean | Array<string | number> | undefined>;
+  /** `null` and `undefined` both mean "omit"; never serialized as the string "null". */
+  query?: Record<string, string | number | boolean | Array<string | number> | null | undefined>;
   body?: RequestBody;
   /** "apiKey" for the 32 public operations; "oauth" for the 73 that need a
    *  scope. Determines whether EtsyHttpClient calls auth.getValidAccessToken(). */
@@ -402,7 +403,7 @@ export class EtsyHttpClient {
     const basePath = base.pathname === "/" ? "" : base.pathname.replace(/\/$/, "");
     const url = new URL(basePath + path, base.origin);
     for (const [key, value] of Object.entries(options.query ?? {})) {
-      if (value === undefined) continue;
+      if (value === undefined || value === null) continue;
       url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
     }
     return url.toString();
