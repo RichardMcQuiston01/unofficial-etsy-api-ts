@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EtsyOAuth } from "../../src/auth/EtsyOAuth.js";
+import { EtsyOAuth, TokenSaveError } from "../../src/auth/EtsyOAuth.js";
 import { InMemoryTokenStore, type TokenSet, type TokenStore } from "../../src/auth/TokenStore.js";
 
 // Independently computed via Node's `crypto` module (SHA-256 + base64url) —
@@ -84,6 +84,30 @@ describe("EtsyOAuth PKCE", () => {
 describe("EtsyOAuth token exchange and refresh", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("rejects a blank state", async () => {
+    const oauth = makeOAuth();
+    await expect(oauth.createAuthorizationUrl("")).rejects.toThrow(/non-empty/);
+    await expect(oauth.createAuthorizationUrl("   ")).rejects.toThrow(/non-empty/);
+  });
+
+  it("token requests use redirect: error", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            access_token: "a",
+            refresh_token: "r",
+            token_type: "Bearer",
+            expires_in: 3600,
+          }),
+          { status: 200 },
+        ),
+    );
+    const oauth = makeOAuth(new InMemoryTokenStore(), fetchMock as unknown as typeof fetch);
+    await oauth.exchangeCode("c", "v");
+    expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
   });
 
   it("exchangeCode posts the authorization_code grant and persists the resulting TokenSet", async () => {
@@ -321,5 +345,120 @@ describe("EtsyOAuth — constructor and environment requirements", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("EtsyOAuth — refresh rotation safety", () => {
+  const tokenResponse = (overrides: Record<string, unknown> = {}): Response =>
+    new Response(
+      JSON.stringify({
+        access_token: "access-new",
+        refresh_token: "refresh-new",
+        token_type: "Bearer",
+        expires_in: 3600,
+        ...overrides,
+      }),
+      { status: 200 },
+    );
+  const expired: TokenSet = {
+    accessToken: "access-old",
+    refreshToken: "refresh-old",
+    expiresAt: Date.now() - 1000,
+    scope: ["listings_r"],
+  };
+
+  it("throws TokenSaveError carrying the new tokens when the store save fails", async () => {
+    const store: TokenStore = {
+      load: () => expired,
+      save: () => {
+        throw new Error("disk full");
+      },
+    };
+    const oauth = makeOAuth(
+      store,
+      vi.fn(async () => tokenResponse()),
+    );
+
+    const error = await oauth.refresh("refresh-old").catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(TokenSaveError);
+    expect((error as TokenSaveError).tokens.refreshToken).toBe("refresh-new");
+    expect((error as TokenSaveError).message).toContain("disk full");
+  });
+
+  it("dedupes a manual refresh() racing getValidAccessToken()", async () => {
+    const store = new InMemoryTokenStore();
+    store.save(expired);
+    const fetchMock = vi.fn(async () => tokenResponse());
+    const oauth = makeOAuth(store, fetchMock);
+
+    const [manual, automatic] = await Promise.all([
+      oauth.refresh("refresh-old"),
+      oauth.getValidAccessToken(),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(manual.accessToken).toBe(automatic);
+  });
+
+  it("shares the lock across EtsyOAuth instances that share a store", async () => {
+    const store = new InMemoryTokenStore();
+    store.save(expired);
+    const fetchMock = vi.fn(async () => tokenResponse());
+    const first = makeOAuth(store, fetchMock);
+    const second = makeOAuth(store, fetchMock);
+
+    await Promise.all([first.getValidAccessToken(), second.getValidAccessToken()]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["access_token", { access_token: undefined }],
+    ["refresh_token", { refresh_token: 5 }],
+    ["expires_in", { expires_in: undefined }],
+    ["expires_in", { expires_in: "3600" }],
+    ["expires_in", { expires_in: 0 }],
+  ])("rejects a token response with an invalid %s", async (_field, overrides) => {
+    const oauth = makeOAuth(
+      new InMemoryTokenStore(),
+      vi.fn(async () => tokenResponse(overrides)),
+    );
+    await expect(oauth.exchangeCode("c", "v")).rejects.toThrow(/token response/i);
+  });
+
+  it("TokenSaveError stringifies a non-Error cause", () => {
+    const error = new TokenSaveError(expired, "plain string failure");
+    expect(error.message).toContain("plain string failure");
+  });
+
+  it("InMemoryTokenStore returns copies, not its stored object", async () => {
+    const store = new InMemoryTokenStore();
+    store.save(expired);
+    const loaded = store.load();
+    if (!loaded) throw new Error("expected tokens");
+    loaded.refreshToken = "tampered";
+    loaded.scope.push("shops_r");
+    expect(store.load()).toEqual(expired);
+  });
+
+  it("refreshAfterRejection refreshes when the rejected token is still current", async () => {
+    const store = new InMemoryTokenStore();
+    store.save({ ...expired, expiresAt: Date.now() + 3_600_000 });
+    const fetchMock = vi.fn(async () => tokenResponse());
+    const oauth = makeOAuth(store, fetchMock);
+
+    expect(await oauth.refreshAfterRejection("access-old")).toBe("access-new");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshAfterRejection reuses a newer token already in the store", async () => {
+    const store = new InMemoryTokenStore();
+    store.save({ ...expired, accessToken: "already-newer" });
+    const fetchMock = vi.fn();
+    const oauth = makeOAuth(store, fetchMock);
+
+    expect(await oauth.refreshAfterRejection("access-old")).toBe("already-newer");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

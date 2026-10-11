@@ -5,7 +5,7 @@
  * Covers: ShopListing Inventory, ShopListing Product, ShopListing Offering,
  * SellerTaxonomy, BuyerTaxonomy, Review.
  */
-import type { EtsyHttpClient, RequestOptions } from "../../http/EtsyHttpClient.js";
+import type { EtsyHttpClient } from "../../http/EtsyHttpClient.js";
 import type {
   GetBuyerTaxonomyNodesResponse,
   GetListingInventoryParams,
@@ -26,33 +26,7 @@ import type {
   UpdateListingInventoryRequestBody,
   UpdateListingInventoryResponse,
 } from "../../generated/operations.js";
-
-type Query = NonNullable<RequestOptions["query"]>;
-
-/**
- * Bridges a generated `...Params["query"]` object into
- * `{ query?: RequestOptions["query"] }`, spread into the request options
- * literal. Two adaptations happen here:
- *  - generated query types sometimes allow `null` for "unset" (e.g.
- *    `min_created`/`max_created` on the Review endpoints), but
- *    `RequestOptions.query` doesn't accept `null` (EtsyHttpClient only
- *    skips `undefined`) — `null` is converted to `undefined` so those
- *    fields are omitted from the querystring rather than serialized as the
- *    literal string "null".
- *  - returns `{}` rather than `{ query: undefined }` when there's nothing
- *    to send, since `exactOptionalPropertyTypes` treats an explicit
- *    `undefined` differently from an omitted key.
- */
-function withQuery<T extends Record<string, unknown> | undefined>(
-  params: T,
-): { query: Query } | Record<string, never> {
-  if (!params) return {};
-  const query: Query = {};
-  for (const [key, value] of Object.entries(params)) {
-    query[key] = value === null ? undefined : (value as Query[string]);
-  }
-  return { query };
-}
+import { toQuery } from "../internal.js";
 
 export class ListingInventoryResource {
   #http: EtsyHttpClient;
@@ -69,7 +43,7 @@ export class ListingInventoryResource {
       method: "GET",
       path: "/v3/application/listings/{listing_id}/inventory",
       pathParams: { listing_id: listingId },
-      ...withQuery(params),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingInventory",
     });
@@ -85,7 +59,7 @@ export class ListingInventoryResource {
       method: "PUT",
       path: "/v3/application/listings/{listing_id}/inventory",
       pathParams: { listing_id: listingId },
-      ...withQuery(query),
+      query: toQuery(query),
       body: { kind: "json", data: body },
       auth: "oauth",
       operationId: "updateListingInventory",
@@ -99,7 +73,7 @@ export class ListingInventoryResource {
     return this.#http.request<GetListingsInventoryByListingIdsResponse>({
       method: "GET",
       path: "/v3/application/listings/batch/inventory",
-      ...withQuery(params),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingsInventoryByListingIds",
     });
@@ -177,7 +151,7 @@ export class ReviewsResource {
       method: "GET",
       path: "/v3/application/listings/{listing_id}/reviews",
       pathParams: { listing_id: listingId },
-      ...withQuery(params),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getReviewsByListing",
     });
@@ -192,7 +166,7 @@ export class ReviewsResource {
       method: "GET",
       path: "/v3/application/shops/{shop_id}/reviews",
       pathParams: { shop_id: shopId },
-      ...withQuery(params),
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "getReviewsByShop",
     });
@@ -233,7 +207,7 @@ export class CatalogResource {
       method: "GET",
       path: "/v3/application/listings/{listing_id}/inventory/products/{product_id}",
       pathParams: { listing_id: listingId, product_id: productId },
-      ...withQuery(params),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getListingProduct",
     });

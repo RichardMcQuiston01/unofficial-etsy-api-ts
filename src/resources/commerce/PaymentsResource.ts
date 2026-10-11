@@ -6,7 +6,7 @@ import type {
   GetPaymentsResponse,
   GetShopPaymentByReceiptIdResponse,
 } from "../../generated/operations.js";
-import { toQuery } from "./internal.js";
+import { toQuery } from "../internal.js";
 
 /** Tag: `Payment`. */
 export class PaymentsResource {

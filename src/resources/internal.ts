@@ -1,16 +1,15 @@
 /**
- * Shared helpers for the Commerce & Identity resource cluster
- * (src/resources/commerce). Not part of the public API — not re-exported
- * from index.ts.
+ * Shared helpers for every resource cluster (src/resources/**). Not part of
+ * the public API — not re-exported from index.ts.
  */
 
 /**
- * Etsy models some boolean query filters as `boolean | null` in the
- * generated operation types (e.g. `was_paid`/`was_shipped` on
- * `getShopReceipts`) even though `RequestOptions.query`
- * (src/http/EtsyHttpClient.ts) has no representation for `null` — a `null`
- * filter value means "don't filter on this", the same as omitting the key
- * entirely, so both `null` and `undefined` are dropped here.
+ * The single query adapter used by every resource method. Etsy models some
+ * query filters as `boolean | null` / `number | null` in the generated
+ * operation types (e.g. `was_paid` on `getShopReceipts`, `min_created` on the
+ * review endpoints). A `null` filter value means "don't filter on this", the
+ * same as omitting the key entirely, so both `null` and `undefined` are
+ * dropped here rather than serialized as the string "null".
  *
  * Always returns a plain (possibly empty) object rather than `undefined` so
  * call sites can write `query: toQuery(params)` unconditionally without

@@ -13,6 +13,7 @@ import { ShopReturnPoliciesResource } from "./returnPolicies.js";
 import { ShopProcessingProfilesResource } from "./processingProfiles.js";
 import { ShopHolidayPreferencesResource } from "./holidayPreferences.js";
 import { ShopProductionPartnersResource } from "./productionPartners.js";
+import { toQuery } from "../internal.js";
 
 export { ShopSectionsResource } from "./sections.js";
 export { ShopShippingProfilesResource } from "./shippingProfiles.js";
@@ -87,7 +88,7 @@ export class ShopResource {
     return this.#http.request<FindShopsResponse>({
       method: "GET",
       path: "/v3/application/shops",
-      query: params,
+      query: toQuery(params),
       auth: "apiKey",
       operationId: "findShops",
     });

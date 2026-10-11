@@ -13,7 +13,7 @@ export type { EtsyApiErrorOptions, RateLimitSnapshot } from "./http/EtsyApiError
 export { paginate } from "./http/pagination.js";
 export type { PaginatedResult, PaginationParams } from "./http/pagination.js";
 
-export { EtsyOAuth } from "./auth/EtsyOAuth.js";
+export { EtsyOAuth, TokenSaveError } from "./auth/EtsyOAuth.js";
 export type { EtsyOAuthConfig, PkceChallenge } from "./auth/EtsyOAuth.js";
 export { InMemoryTokenStore } from "./auth/TokenStore.js";
 export type { EtsyScope, TokenSet, TokenStore } from "./auth/TokenStore.js";

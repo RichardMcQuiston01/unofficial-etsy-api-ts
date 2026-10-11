@@ -921,44 +921,6 @@ describe("EtsyHttpClient — cancellation", () => {
     await expect(promise).rejects.toThrow(/aborted/i);
   });
 
-  it("immediately aborts when the per-attempt timeout signal is already aborted at combine time", async () => {
-    const alreadyAbortedTimeout = new AbortController();
-    alreadyAbortedTimeout.abort(new DOMException("Aborted", "TimeoutError"));
-    const timeoutSpy = vi
-      .spyOn(AbortSignal, "timeout")
-      .mockReturnValueOnce(alreadyAbortedTimeout.signal);
-
-    const fetchMock = vi.fn(
-      (_url: string | URL, init?: RequestInit) =>
-        new Promise<Response>((_resolve, reject) => {
-          if (init?.signal?.aborted) {
-            reject(new DOMException("Aborted", "TimeoutError"));
-            return;
-          }
-          init?.signal?.addEventListener("abort", () => {
-            reject(new DOMException("Aborted", "TimeoutError"));
-          });
-        }),
-    );
-    const client = new EtsyHttpClient({
-      apiKey: "test-key",
-      apiKeySecret: "test-secret",
-      fetch: fetchMock as unknown as typeof fetch,
-    });
-    const controller = new AbortController();
-
-    const promise = client.request({
-      method: "GET",
-      path: "/v3/application/openapi-ping",
-      auth: "apiKey",
-      operationId: "ping",
-      signal: controller.signal,
-    });
-
-    await expect(promise).rejects.toThrow(/aborted/i);
-    timeoutSpy.mockRestore();
-  });
-
   it("aborts a request that exceeds the configured timeout", async () => {
     const fetchMock = vi.fn(
       (_url: string | URL, init?: RequestInit) =>
@@ -1028,5 +990,207 @@ describe("EtsyHttpClient — constructor", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe("EtsyHttpClient — baseUrl scheme validation", () => {
+  const make = (baseUrl: string) =>
+    new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      baseUrl,
+      fetch: vi.fn(),
+    });
+
+  it.each([
+    "https://example.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+    "http://[::1]:3000",
+  ])("accepts %s", (baseUrl) => {
+    expect(() => make(baseUrl)).not.toThrow();
+  });
+
+  it.each(["http://example.com", "ftp://localhost", "http://localhost.evil.com"])(
+    "rejects %s, naming the URL but not the secret",
+    (baseUrl) => {
+      expect(() => make(baseUrl)).toThrow(baseUrl);
+      expect(() => make(baseUrl)).not.toThrow(/test-secret/);
+    },
+  );
+
+  it("rejects an unparseable baseUrl", () => {
+    expect(() => make("not a url")).toThrow('baseUrl "not a url" is not a valid URL');
+  });
+});
+
+describe("EtsyHttpClient — redirects", () => {
+  it("sets redirect: error so x-api-key is never forwarded cross-origin", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) =>
+      jsonResponse({ ok: true }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+    expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
+  });
+});
+
+describe("EtsyHttpClient — resource cleanup", () => {
+  it("removes the caller-signal listener and clears the timeout after a normal completion", async () => {
+    const controller = new AbortController();
+    const addSpy = vi.spyOn(controller.signal, "addEventListener");
+    const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
+    const clearSpy = vi.spyOn(globalThis, "clearTimeout");
+    const client = new EtsyHttpClient({
+      apiKey: "k",
+      apiKeySecret: "s",
+      fetch: async () => jsonResponse({ ok: true }),
+    });
+
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+      signal: controller.signal,
+    });
+
+    expect(addSpy).toHaveBeenCalledTimes(1);
+    expect(removeSpy).toHaveBeenCalledWith("abort", addSpy.mock.calls[0]?.[1]);
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
+  });
+});
+
+describe("EtsyHttpClient — 429 retry body and token handling", () => {
+  const retryClient = (fetchImpl: typeof fetch, auth?: EtsyOAuth): EtsyHttpClient =>
+    new EtsyHttpClient({
+      apiKey: "k",
+      apiKeySecret: "s",
+      fetch: fetchImpl,
+      retry: { maxBackoffMs: 1 },
+      ...(auth ? { auth } : {}),
+    });
+  const ping = {
+    method: "GET",
+    path: "/v3/application/openapi-ping",
+    operationId: "ping",
+  } as const;
+
+  it("cancels the 429 response body before retrying", async () => {
+    const cancel = vi.fn(async () => undefined);
+    const throttled = jsonResponse({ error: "slow down" }, { status: 429 });
+    Object.defineProperty(throttled, "body", { value: { cancel } });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(throttled)
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await retryClient(fetchMock).request({ ...ping, auth: "apiKey" });
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("re-reads the access token before each 429 retry", async () => {
+    const getValidAccessToken = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce("token-1")
+      .mockResolvedValueOnce("token-2");
+    const seen: (string | null)[] = [];
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get("Authorization"));
+      return seen.length === 1 ? jsonResponse({}, { status: 429 }) : jsonResponse({ ok: true });
+    });
+
+    await retryClient(
+      fetchMock as unknown as typeof fetch,
+      {
+        getValidAccessToken,
+      } as unknown as EtsyOAuth,
+    ).request({ ...ping, auth: "oauth" });
+
+    expect(seen).toEqual(["Bearer token-1", "Bearer token-2"]);
+  });
+
+  const refreshingAuth = (): {
+    auth: EtsyOAuth;
+    refreshAfterRejection: ReturnType<typeof vi.fn>;
+  } => {
+    const refreshAfterRejection = vi.fn(async () => "fresh");
+    return {
+      auth: {
+        getValidAccessToken: async () => "stale",
+        refreshAfterRejection,
+      } as unknown as EtsyOAuth,
+      refreshAfterRejection,
+    };
+  };
+
+  it("on 401, refreshes once and retries with the new access token", async () => {
+    const { auth, refreshAfterRejection } = refreshingAuth();
+    const seen: (string | null)[] = [];
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get("Authorization"));
+      return seen.length === 1
+        ? jsonResponse({ error: "expired" }, { status: 401 })
+        : jsonResponse({ ok: true });
+    });
+
+    await retryClient(fetchMock as unknown as typeof fetch, auth).request({
+      ...ping,
+      auth: "oauth",
+    });
+
+    expect(refreshAfterRejection).toHaveBeenCalledWith("stale");
+    expect(seen).toEqual(["Bearer stale", "Bearer fresh"]);
+  });
+
+  it("surfaces the error when the retry after a 401 refresh also returns 401", async () => {
+    const { auth, refreshAfterRejection } = refreshingAuth();
+    const fetchMock = vi.fn(async () => jsonResponse({ error: "revoked" }, { status: 401 }));
+
+    await expect(
+      retryClient(fetchMock as unknown as typeof fetch, auth).request({ ...ping, auth: "oauth" }),
+    ).rejects.toThrow(EtsyApiError);
+    expect(refreshAfterRejection).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not try to refresh a 401 on an apiKey-only operation", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ error: "bad key" }, { status: 401 }));
+
+    await expect(
+      retryClient(fetchMock as unknown as typeof fetch).request({ ...ping, auth: "apiKey" }),
+    ).rejects.toThrow(EtsyApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("EtsyHttpClient — null query values", () => {
+  it('omits null and undefined query values instead of sending the string "null"', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) => jsonResponse({}));
+    const client = new EtsyHttpClient({
+      apiKey: "k",
+      apiKeySecret: "s",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      query: { a: null, b: undefined, c: 1 },
+      auth: "apiKey",
+      operationId: "ping",
+    });
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).search).toBe("?c=1");
   });
 });

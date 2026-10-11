@@ -8,6 +8,7 @@ import type {
   UpdateShopShippingProfileDestinationRequestBody,
   UpdateShopShippingProfileDestinationResponse,
 } from "../../generated/operations.js";
+import { toQuery } from "../internal.js";
 
 const BASE_PATH =
   "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/destinations";
@@ -51,7 +52,7 @@ export class ShopShippingProfileDestinationsResource {
       method: "GET",
       path: BASE_PATH,
       pathParams: { shop_id: shopId, shipping_profile_id: shippingProfileId },
-      ...(params ? { query: params } : {}),
+      query: toQuery(params),
       auth: "oauth",
       operationId: "getShopShippingProfileDestinationsByShippingProfile",
     });

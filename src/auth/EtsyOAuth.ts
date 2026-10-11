@@ -13,6 +13,26 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /** Truncated so an oversized or unexpected token-endpoint body can't blow up caller log sinks. */
 const MAX_ERROR_BODY_LENGTH = 500;
 
+/**
+ * Thrown when Etsy issued new tokens but `TokenStore.save` failed. Etsy has
+ * already rotated the refresh token, so the previous one is dead: the
+ * caller must persist `tokens` (e.g. retry the save) or the grant is lost.
+ */
+export class TokenSaveError extends Error {
+  readonly tokens: TokenSet;
+
+  constructor(tokens: TokenSet, cause: unknown) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    super(
+      `EtsyOAuth: Etsy issued new tokens but TokenStore.save failed (${reason}). The previous ` +
+        "refresh token is no longer valid; persist the `tokens` property of this error.",
+      { cause },
+    );
+    this.name = "TokenSaveError";
+    this.tokens = tokens;
+  }
+}
+
 export interface PkceChallenge {
   codeVerifier: string;
   codeChallenge: string;
@@ -88,7 +108,27 @@ async function deriveCodeChallenge(codeVerifier: string): Promise<string> {
   return toBase64Url(new Uint8Array(digest));
 }
 
+/** Refreshes in flight, keyed per store then per refresh token, so every EtsyOAuth sharing a store shares the lock. */
+const refreshLocks = new WeakMap<TokenStore, Map<string, Promise<TokenSet>>>();
+
 function toTokenSet(response: EtsyTokenResponse, requestedScopes: EtsyScope[]): TokenSet {
+  const candidate = response as Partial<Record<keyof EtsyTokenResponse, unknown>>;
+  if (typeof candidate.access_token !== "string" || candidate.access_token === "") {
+    throw new Error("Etsy OAuth token response is missing a string `access_token`.");
+  }
+  if (typeof candidate.refresh_token !== "string" || candidate.refresh_token === "") {
+    throw new Error("Etsy OAuth token response is missing a string `refresh_token`.");
+  }
+  if (
+    typeof candidate.expires_in !== "number" ||
+    !Number.isFinite(candidate.expires_in) ||
+    candidate.expires_in <= 0
+  ) {
+    throw new Error(
+      `Etsy OAuth token response has an invalid \`expires_in\` (${String(candidate.expires_in)}); ` +
+        "expected a positive finite number of seconds.",
+    );
+  }
   return {
     accessToken: response.access_token,
     refreshToken: response.refresh_token,
@@ -111,6 +151,8 @@ async function requestToken(
     },
     body: new URLSearchParams(body),
     signal: AbortSignal.timeout(timeoutMs),
+    // x-api-key is not stripped by fetch on cross-origin redirects; never follow one.
+    redirect: "error",
   });
 
   if (!response.ok) {
@@ -132,10 +174,6 @@ export class EtsyOAuth {
   #tokenStore: TokenStore;
   #fetch: typeof fetch;
   #timeoutMs: number;
-  /** Dedupes concurrent refresh() calls so two requests racing near expiry
-   *  don't both spend the same (rotating) refresh token — the second
-   *  exchange would otherwise fail with an already-consumed token. */
-  #refreshInFlight: Promise<TokenSet> | undefined;
 
   constructor(config: EtsyOAuthConfig) {
     const fetchImpl = config.fetch ?? globalThis.fetch?.bind(globalThis);
@@ -157,10 +195,17 @@ export class EtsyOAuth {
 
   /**
    * Builds the etsy.com/oauth/connect URL and generates a fresh PKCE pair.
-   * Caller is responsible for persisting the verifier for the callback
-   * (e.g. in a session) and passing it to exchangeCode().
+   * Caller is responsible for persisting the verifier and `state` for the
+   * callback (e.g. in a session), comparing the callback's `state` to the
+   * stored value, and only then passing the verifier to exchangeCode().
    */
   async createAuthorizationUrl(state: string): Promise<{ url: string; pkce: PkceChallenge }> {
+    if (state.trim() === "") {
+      throw new Error(
+        "EtsyOAuth: `state` must be a non-empty random value; a blank state does not bind " +
+          "the callback to the session that started the flow.",
+      );
+    }
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await deriveCodeChallenge(codeVerifier);
 
@@ -195,13 +240,32 @@ export class EtsyOAuth {
       },
       this.#timeoutMs,
     );
-    const tokens = toTokenSet(response, this.#scopes);
-    await this.#tokenStore.save(tokens);
-    return tokens;
+    return this.#persist(toTokenSet(response, this.#scopes));
   }
 
-  /** Rotates the refresh token; persists the new TokenSet via TokenStore. */
-  async refresh(refreshToken: string): Promise<TokenSet> {
+  /**
+   * Rotates the refresh token; persists the new TokenSet via TokenStore.
+   * Single-flight per (store, refresh token): concurrent callers spending the
+   * same token share one request. If the store's `save` fails after Etsy has
+   * rotated the token, throws TokenSaveError carrying the new tokens.
+   */
+  refresh(refreshToken: string): Promise<TokenSet> {
+    let locks = refreshLocks.get(this.#tokenStore);
+    if (!locks) {
+      locks = new Map();
+      refreshLocks.set(this.#tokenStore, locks);
+    }
+    const existing = locks.get(refreshToken);
+    if (existing) return existing;
+
+    const pending = this.#requestRefresh(refreshToken).finally(() => {
+      locks.delete(refreshToken);
+    });
+    locks.set(refreshToken, pending);
+    return pending;
+  }
+
+  async #requestRefresh(refreshToken: string): Promise<TokenSet> {
     const response = await requestToken(
       this.#fetch,
       `${this.#clientId}:${this.#clientSecret}`,
@@ -212,8 +276,15 @@ export class EtsyOAuth {
       },
       this.#timeoutMs,
     );
-    const tokens = toTokenSet(response, this.#scopes);
-    await this.#tokenStore.save(tokens);
+    return this.#persist(toTokenSet(response, this.#scopes));
+  }
+
+  async #persist(tokens: TokenSet): Promise<TokenSet> {
+    try {
+      await this.#tokenStore.save(tokens);
+    } catch (error) {
+      throw new TokenSaveError(tokens, error);
+    }
     return tokens;
   }
 
@@ -223,6 +294,27 @@ export class EtsyOAuth {
    * EtsyHttpClient — resource modules never call this directly.
    */
   async getValidAccessToken(): Promise<string> {
+    const tokens = await this.#loadTokens();
+    if (tokens.expiresAt - Date.now() > EXPIRY_BUFFER_MS) {
+      return tokens.accessToken;
+    }
+    const refreshed = await this.refresh(tokens.refreshToken);
+    return refreshed.accessToken;
+  }
+
+  /**
+   * Called by EtsyHttpClient after Etsy answers 401 to `rejectedAccessToken`.
+   * Refreshes unless the store already holds a different (newer) access
+   * token, in which case that one is returned without spending the refresh token.
+   */
+  async refreshAfterRejection(rejectedAccessToken: string): Promise<string> {
+    const tokens = await this.#loadTokens();
+    if (tokens.accessToken !== rejectedAccessToken) return tokens.accessToken;
+    const refreshed = await this.refresh(tokens.refreshToken);
+    return refreshed.accessToken;
+  }
+
+  async #loadTokens(): Promise<TokenSet> {
     const tokens = await this.#tokenStore.load();
     if (!tokens) {
       throw new Error(
@@ -230,14 +322,6 @@ export class EtsyOAuth {
           "(createAuthorizationUrl -> exchangeCode) before making authenticated requests.",
       );
     }
-    if (tokens.expiresAt - Date.now() > EXPIRY_BUFFER_MS) {
-      return tokens.accessToken;
-    }
-
-    this.#refreshInFlight ??= this.refresh(tokens.refreshToken).finally(() => {
-      this.#refreshInFlight = undefined;
-    });
-    const refreshed = await this.#refreshInFlight;
-    return refreshed.accessToken;
+    return tokens;
   }
 }
