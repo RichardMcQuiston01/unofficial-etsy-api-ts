@@ -18,7 +18,9 @@ export interface EtsyClientConfig {
   /** Injectable fetch implementation; defaults to global fetch. Required in
    *  environments without one. */
   fetch?: typeof fetch;
-  /** Defaults to "https://openapi.etsy.com". Override for testing. */
+  /** Defaults to "https://openapi.etsy.com". Override for testing. Must be
+   *  https://, or http:// for a loopback host (localhost, 127.0.0.1, ::1);
+   *  anything else throws at construction. */
   baseUrl?: string;
   /** Omit for API-key-only usage (32 public operations). Required for the
    *  73 operations that need OAuth scopes. */

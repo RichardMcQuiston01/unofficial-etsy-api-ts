@@ -1030,3 +1030,54 @@ describe("EtsyHttpClient — constructor", () => {
     }
   });
 });
+
+describe("EtsyHttpClient — baseUrl scheme validation", () => {
+  const make = (baseUrl: string) =>
+    new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      baseUrl,
+      fetch: vi.fn(),
+    });
+
+  it.each([
+    "https://example.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+    "http://[::1]:3000",
+  ])("accepts %s", (baseUrl) => {
+    expect(() => make(baseUrl)).not.toThrow();
+  });
+
+  it.each(["http://example.com", "ftp://localhost", "http://localhost.evil.com"])(
+    "rejects %s, naming the URL but not the secret",
+    (baseUrl) => {
+      expect(() => make(baseUrl)).toThrow(baseUrl);
+      expect(() => make(baseUrl)).not.toThrow(/test-secret/);
+    },
+  );
+
+  it("rejects an unparseable baseUrl", () => {
+    expect(() => make("not a url")).toThrow('baseUrl "not a url" is not a valid URL');
+  });
+});
+
+describe("EtsyHttpClient — redirects", () => {
+  it("sets redirect: error so x-api-key is never forwarded cross-origin", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) =>
+      jsonResponse({ ok: true }),
+    );
+    const client = new EtsyHttpClient({
+      apiKey: "test-key",
+      apiKeySecret: "test-secret",
+      fetch: fetchMock as unknown as typeof fetch,
+    });
+    await client.request({
+      method: "GET",
+      path: "/v3/application/openapi-ping",
+      auth: "apiKey",
+      operationId: "ping",
+    });
+    expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
+  });
+});

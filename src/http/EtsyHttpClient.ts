@@ -6,6 +6,28 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_MAX_BACKOFF_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+const LOOPBACK_HOSTNAMES: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * Rejects any baseUrl that would send `x-api-key` / `Authorization` in
+ * cleartext: https is always allowed, http only for loopback hosts. The
+ * message names the rejected URL, never the credentials.
+ */
+function assertSafeBaseUrl(baseUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error(`EtsyHttpClient: baseUrl "${baseUrl}" is not a valid URL.`);
+  }
+  if (parsed.protocol === "https:") return;
+  if (parsed.protocol === "http:" && LOOPBACK_HOSTNAMES.has(parsed.hostname)) return;
+  throw new Error(
+    `EtsyHttpClient: baseUrl "${baseUrl}" is rejected. Use https://, or http:// only for ` +
+      "loopback hosts (localhost, 127.0.0.1, ::1); credentials would otherwise be sent in cleartext.",
+  );
+}
+
 /** The three shapes #buildBody ever produces; avoids depending on the DOM-lib-only `BodyInit` alias. */
 type FetchBody = string | URLSearchParams | FormData;
 
@@ -208,7 +230,9 @@ export class EtsyHttpClient {
 
     this.#apiKey = config.apiKey;
     this.#apiKeySecret = config.apiKeySecret;
-    this.#baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
+    const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
+    assertSafeBaseUrl(baseUrl);
+    this.#baseUrl = baseUrl;
     this.#fetch = fetchImpl;
     this.#auth = config.auth;
     this.#maxRetries = config.retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
@@ -262,7 +286,14 @@ export class EtsyHttpClient {
     // A fresh timeout window per attempt — a slow-but-eventually-429 server
     // doesn't get to consume the whole budget on one hung attempt.
     const signal = combineSignals(callerSignal, this.#timeoutMs);
-    const response = await this.#fetch(url, { method, headers, signal, ...(body ? { body } : {}) });
+    const response = await this.#fetch(url, {
+      method,
+      headers,
+      signal,
+      // x-api-key is not stripped by fetch on cross-origin redirects; never follow one.
+      redirect: "error",
+      ...(body ? { body } : {}),
+    });
 
     const rateLimit = parseRateLimitHeaders(response.headers);
     if (rateLimit) this.#lastRateLimit = rateLimit;

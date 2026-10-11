@@ -111,6 +111,8 @@ async function requestToken(
     },
     body: new URLSearchParams(body),
     signal: AbortSignal.timeout(timeoutMs),
+    // x-api-key is not stripped by fetch on cross-origin redirects; never follow one.
+    redirect: "error",
   });
 
   if (!response.ok) {
@@ -157,10 +159,17 @@ export class EtsyOAuth {
 
   /**
    * Builds the etsy.com/oauth/connect URL and generates a fresh PKCE pair.
-   * Caller is responsible for persisting the verifier for the callback
-   * (e.g. in a session) and passing it to exchangeCode().
+   * Caller is responsible for persisting the verifier and `state` for the
+   * callback (e.g. in a session), comparing the callback's `state` to the
+   * stored value, and only then passing the verifier to exchangeCode().
    */
   async createAuthorizationUrl(state: string): Promise<{ url: string; pkce: PkceChallenge }> {
+    if (state.trim() === "") {
+      throw new Error(
+        "EtsyOAuth: `state` must be a non-empty random value; a blank state does not bind " +
+          "the callback to the session that started the flow.",
+      );
+    }
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await deriveCodeChallenge(codeVerifier);
 

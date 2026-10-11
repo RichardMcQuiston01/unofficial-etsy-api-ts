@@ -16,8 +16,12 @@ Framework agnostic TypeScript NPM package for interacting with Etsy's API servic
 
 ### Prerequisites
 
-- Node.js 20 or later (also targets browsers and edge runtimes such as
+- Node.js 20 or later (also runs server-side on edge runtimes such as
   Cloudflare Workers, Deno, and Bun — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)).
+  **Do not ship your shared secret to a browser.** Every request sends
+  `x-api-key: <keystring>:<shared secret>`, so anyone who loads a page
+  containing it can call the API as your app. Browser code must call your own
+  backend, which holds the secret.
 - An Etsy app keystring/API key **and** its shared secret, both obtained
   from the [Etsy Developers portal](https://www.etsy.com/developers/your-apps)
   — Etsy's [shared-secret enforcement](https://github.com/etsy/open-api/discussions/1531)
@@ -76,11 +80,15 @@ const auth = new EtsyOAuth({
   scopes: ["listings_r", "listings_w", "shops_r"],
 });
 
-// 1. Send the user to Etsy to authorize; persist `pkce.codeVerifier` for
-//    the callback (e.g. in a session).
-const { url, pkce } = await auth.createAuthorizationUrl("<random state>");
+// 1. Send the user to Etsy to authorize; persist `state` and
+//    `pkce.codeVerifier` together for the callback (e.g. in a session).
+const state = crypto.randomUUID();
+const { url, pkce } = await auth.createAuthorizationUrl(state);
+// session.save({ state, codeVerifier: pkce.codeVerifier });
 
-// 2. On the OAuth callback, exchange the returned `code` for tokens.
+// 2. On the OAuth callback, verify the returned `state` matches the stored
+//    one BEFORE exchanging the `code` for tokens.
+// if (callbackQuery.state !== session.state) throw new Error("OAuth state mismatch");
 await auth.exchangeCode("<code from callback query string>", pkce.codeVerifier);
 
 // 3. Build the client — EtsyHttpClient calls auth.getValidAccessToken()

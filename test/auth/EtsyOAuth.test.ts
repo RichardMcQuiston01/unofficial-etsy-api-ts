@@ -86,6 +86,30 @@ describe("EtsyOAuth token exchange and refresh", () => {
     vi.restoreAllMocks();
   });
 
+  it("rejects a blank state", async () => {
+    const oauth = makeOAuth();
+    await expect(oauth.createAuthorizationUrl("")).rejects.toThrow(/non-empty/);
+    await expect(oauth.createAuthorizationUrl("   ")).rejects.toThrow(/non-empty/);
+  });
+
+  it("token requests use redirect: error", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            access_token: "a",
+            refresh_token: "r",
+            token_type: "Bearer",
+            expires_in: 3600,
+          }),
+          { status: 200 },
+        ),
+    );
+    const oauth = makeOAuth(new InMemoryTokenStore(), fetchMock as unknown as typeof fetch);
+    await oauth.exchangeCode("c", "v");
+    expect(fetchMock.mock.calls[0]?.[1]?.redirect).toBe("error");
+  });
+
   it("exchangeCode posts the authorization_code grant and persists the resulting TokenSet", async () => {
     const tokenStore: TokenStore = new InMemoryTokenStore();
 
