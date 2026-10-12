@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
+### Security
+
+- Requests no longer follow redirects (`redirect: "error"` on the transport and
+  the OAuth token endpoint), so the `x-api-key` shared secret can't be forwarded
+  to another origin.
+- `baseUrl` must be `https://`, or `http://` for loopback hosts (`localhost`,
+  `127.0.0.1`, `::1`); anything else throws at construction. **Behavior change**
+  for anyone pointing `baseUrl` at a non-loopback `http://` host.
+- `EtsyOAuth.createAuthorizationUrl()` rejects a blank `state`; the README now
+  shows storing and comparing `state` on the callback.
+- Docs warn against shipping `apiKeySecret` / `clientSecret` to a browser.
+
+### Fixed
+
+- Refresh-token rotation: `refresh()` is single-flight per store and refresh
+  token (including across `EtsyOAuth` instances sharing a store); token
+  responses are validated (`access_token`, `refresh_token`, positive finite
+  `expires_in`); `InMemoryTokenStore` returns copies.
+- A failed `TokenStore.save` after Etsy rotates the token throws the new
+  `TokenSaveError`, whose `tokens` property carries the replacement `TokenSet`.
+- 429 retries re-read the access token before each attempt and cancel the
+  response body before backing off.
+- A 401 on an OAuth call refreshes the token once and retries, then surfaces the
+  error if the retry also fails (new `EtsyOAuth.refreshAfterRejection()`).
+- Timeout timers and caller-signal abort listeners are cleared when each request
+  attempt settles.
+- `null` query values are omitted by the transport and every resource cluster
+  instead of being sent as the string `"null"`.
+
+### Added
+
+- `TokenSaveError`, exported from the package root.
+- `test/openapi-drift.test.ts` checks method, path, auth, and body encoding of
+  every operation against `docs/<version>.json`.
+
 ## [0.3.0] - 2026-10-05
 
 ### Added
@@ -342,7 +379,8 @@ invocation` in spec-compliant browsers (the receiver becomes the
   tooling state (e.g. isolated git worktrees for parallel Stage 4
   work) that shouldn't be tracked in the repo.
 
-[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/releases/tag/v0.1.0
