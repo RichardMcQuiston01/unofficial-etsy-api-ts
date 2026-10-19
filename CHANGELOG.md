@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-19
+
+### Added
+
+- `package.json` `funding` entry, so `npm fund` and the npm page show the
+  project's donate link.
+
+### Changed
+
+- README: donate section wording aligned with the standard donate block.
+
 ## [0.4.0] - 2026-10-12
 
 ### Security
@@ -379,7 +390,8 @@ invocation` in spec-compliant browsers (the receiver becomes the
   tooling state (e.g. isolated git worktrees for parallel Stage 4
   work) that shouldn't be tracked in the repo.
 
-[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RichardMcQuiston01/unofficial-etsy-api-ts/compare/v0.1.0...v0.2.0
