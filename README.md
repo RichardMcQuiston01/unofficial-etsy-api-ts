@@ -178,7 +178,6 @@ If this app, code, or repository has helped you or someone you know, please cons
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/P1V529Z7ZP)
 
-
 ## License
 
 Apache 2.0
